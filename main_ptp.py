@@ -53,7 +53,7 @@ def main():
     )
     parser.add_argument(
         "--mode",
-        choices=["full", "docs", "contact"],
+        choices=["full", "docs", "contact", "brief", "dashboard"],
         default="full",
         help="Mode d'exécution (défaut: full)",
     )
@@ -94,6 +94,22 @@ def main():
             formations_ids=args.formations,
             max_etablissements=args.max_etab,
         )
+
+    elif args.mode == "brief":
+        orchestrator.run_daily_brief()
+
+    elif args.mode == "dashboard":
+        # Régénère uniquement le dashboard sans appeler Claude
+        from ptp_system.agents.school_tracker_agent import SchoolTrackerAgent
+        from ptp_system.tools.dashboard_tools import generer_tout_dashboard
+        tracker = SchoolTrackerAgent()
+        paths = generer_tout_dashboard(
+            ecoles=tracker.ecoles,
+            stats_ecoles=tracker.get_stats(),
+        )
+        print(f"✅ Dashboard mis à jour :")
+        print(f"   🏠 {paths['index']}")
+        print(f"   🏫 {paths['ecoles']}")
 
     else:  # full
         orchestrator.run_full(

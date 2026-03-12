@@ -46,7 +46,7 @@ DEBRIEF_EMAIL_TO=votre.email@gmail.com
 ```bash
 python main_ptp.py
 ```
-Exécute : Génération documents → Recherche établissements → Rédaction emails → Débrief
+Exécute : Documents → Recherche établissements → Emails → Dashboard → Débrief email
 
 ### Générer uniquement les documents
 ```bash
@@ -58,6 +58,19 @@ Génère les 4 fichiers dans `outputs/dossier_ptp/`
 ```bash
 python main_ptp.py --mode contact
 ```
+
+### Brief journalier (priorités du jour + email récapitulatif)
+```bash
+python main_ptp.py --mode brief
+```
+Régénère le dashboard et envoie un email avec les actions à faire aujourd'hui.
+**Idéal à programmer en tâche cron chaque matin.**
+
+### Régénérer le dashboard sans lancer Claude
+```bash
+python main_ptp.py --mode dashboard
+```
+Recharge le tracking existant et met à jour les pages HTML.
 
 ### Filtrer par formation
 ```bash
@@ -74,12 +87,22 @@ python main_ptp.py --max-etab 3
 python main_ptp.py --liste-formations
 ```
 
+### Programmer le brief journalier (cron)
+```bash
+# Chaque matin à 8h00
+0 8 * * * cd /chemin/vers/projet && python main_ptp.py --mode brief
+```
+Ajoutez cette ligne avec `crontab -e` sur Linux/Mac.
+
 ---
 
 ## 4. Structure des fichiers générés
 
 ```
 outputs/
+├── dashboard/
+│   ├── index.html       ← Tableau de bord principal (ouvrir dans le nav.)
+│   └── ecoles.html      ← Tableau des écoles avec boutons de confirmation
 ├── dossier_ptp/
 │   ├── lettre_motivation_transitions_pro.docx
 │   ├── lettre_motivation_iut.docx
@@ -90,8 +113,9 @@ outputs/
 │   ├── email_IUT_Nantes_premier_contact.eml    ← Importable dans Gmail
 │   └── ...
 └── logs/
+    ├── schools_tracking.json                   ← Base de données des écoles
     ├── debrief_20260312_143022.html            ← Rapport débrief
-    └── session_20260312_143022.json            ← Données brutes
+    └── session_20260312_143022.json            ← Données brutes session
 ```
 
 ---
@@ -101,14 +125,13 @@ outputs/
 ```
 PTPOrchestrator (main_ptp.py)
 ├── 🔍 SchoolResearchAgent
-│   → Analyse les sites des IUT
-│   → Trouve contacts, dates limites, liens candidature
-│   → Évalue l'adéquation profil/formation
+│   → Scrape les sites IUT, trouve contacts, dates limites, liens
+│   → Évalue l'adéquation profil/formation (score /10)
 │
 ├── ✉️  EmailDraftAgent
 │   → Rédige des emails personnalisés pour chaque établissement
 │   → Sauvegarde en .html et .eml (brouillons locaux)
-│   → Envoie dans Gmail Drafts si configuré
+│   → Peut envoyer dans Gmail Drafts si configuré
 │
 ├── 📄 DocumentGeneratorAgent
 │   → Lettre motivation Transitions Pro (.docx)
@@ -116,11 +139,21 @@ PTPOrchestrator (main_ptp.py)
 │   → Planning démarches PTP (.xlsx)
 │   → Liste contacts IUT (.xlsx)
 │
+├── 🏫 SchoolTrackerAgent  ← NOUVEAU
+│   → Maintient la base JSON des écoles (schools_tracking.json)
+│   → Suit les statuts : À contacter → Brouillon prêt → Contacté → ...
+│   → Met à jour après chaque session automatiquement
+│
+├── 🖥️  DashboardTools  ← NOUVEAU
+│   → index.html : vue d'ensemble avec coches automatiques + manuelles
+│   → ecoles.html : tableau interactif avec boutons "Confirmer envoi"
+│   → Filtres, tri, recherche, persistance localStorage
+│
 └── 📊 DebriefAgent
     → Compile tous les résultats
     → Génère rapport HTML détaillé
     → Envoie par email (si Gmail configuré)
-    → Sauvegarde localement
+    → Brief journalier (--mode brief)
 ```
 
 ---

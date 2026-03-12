@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tableau de bord PTP — Chris Gnabroyou</title>
+<style>
+  :root {
+    --blue: #1F497D; --blue-light: #4472C4; --blue-pale: #EBF3FB;
+    --green: #107c10; --green-bg: #dff0d8; --green-check: #28a745;
+    --orange: #d67f20; --orange-bg: #fff3cd;
+    --red: #c00; --red-bg: #fce4d6;
+    --grey: #666; --grey-bg: #f5f5f5; --border: #ddd;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #333; }
+
+  /* Header */
+  .header { background: var(--blue); color: white; padding: 24px 32px; }
+  .header h1 { font-size: 1.6em; font-weight: 700; }
+  .header .meta { opacity: .8; font-size: .9em; margin-top: 6px; }
+
+  /* Navigation */
+  .nav { background: var(--blue-light); padding: 0 32px; display: flex; gap: 4px; }
+  .nav a {
+    color: white; text-decoration: none; padding: 12px 20px; font-size: .9em;
+    border-bottom: 3px solid transparent; transition: all .2s;
+  }
+  .nav a:hover, .nav a.active { border-bottom-color: white; background: rgba(255,255,255,.1); }
+
+  /* Layout */
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .card {
+    background: white; border-radius: 10px; padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08); text-align: center;
+  }
+  .card .num { font-size: 2.2em; font-weight: 700; color: var(--blue); }
+  .card .label { color: var(--grey); font-size: .85em; margin-top: 4px; }
+  .card.green .num { color: var(--green); }
+  .card.orange .num { color: var(--orange); }
+
+  /* Sections */
+  .section { background: white; border-radius: 10px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .section h2 { color: var(--blue); font-size: 1.15em; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 2px solid var(--blue-pale); display: flex; align-items: center; gap: 8px; }
+
+  /* Checklist */
+  .checklist { list-style: none; }
+  .checklist li {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 12px; border-radius: 8px; margin-bottom: 6px;
+    transition: background .15s;
+  }
+  .checklist li:hover { background: var(--grey-bg); }
+  .checklist li.done { background: var(--green-bg); }
+  .checklist li.pending { background: var(--orange-bg); }
+  .checklist li.todo { background: #fff; border: 1px solid var(--border); }
+
+  /* Checkbox styles */
+  .check-wrap { position: relative; width: 22px; height: 22px; flex-shrink: 0; margin-top: 1px; }
+  .check-wrap input[type=checkbox] { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; z-index: 2; margin: 0; }
+  .check-box {
+    width: 22px; height: 22px; border-radius: 5px; border: 2px solid #ccc;
+    background: white; display: flex; align-items: center; justify-content: center;
+    transition: all .2s; font-size: 14px;
+  }
+  .check-wrap input:checked + .check-box { background: var(--green-check); border-color: var(--green-check); color: white; }
+  .check-wrap input:checked + .check-box::after { content: '✓'; font-weight: bold; color: white; }
+
+  .auto-check { color: var(--green-check); font-size: 1.3em; flex-shrink: 0; }
+  .auto-cross { color: var(--grey); font-size: 1.3em; flex-shrink: 0; }
+
+  .item-text { flex: 1; }
+  .item-title { font-weight: 600; font-size: .95em; }
+  .item-desc { color: var(--grey); font-size: .82em; margin-top: 3px; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 12px;
+    font-size: .75em; font-weight: 600; flex-shrink: 0; align-self: center;
+  }
+  .badge.auto { background: var(--green-bg); color: var(--green); }
+  .badge.manual { background: var(--orange-bg); color: var(--orange); }
+  .badge.todo { background: #eee; color: #888; }
+
+  /* Progress bar */
+  .progress-wrap { background: #eee; border-radius: 10px; height: 12px; margin: 8px 0 4px; overflow: hidden; }
+  .progress-bar { height: 100%; border-radius: 10px; background: linear-gradient(90deg, var(--blue-light), var(--blue)); transition: width .6s ease; }
+
+  /* Table formations */
+  .form-grid { display: grid; gap: 12px; }
+  .form-row { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .form-header {
+    background: var(--blue-pale); padding: 10px 14px;
+    font-weight: 600; font-size: .9em; color: var(--blue);
+    display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+  }
+  .form-body { padding: 12px 14px; display: none; }
+  .form-body.open { display: block; }
+  .prio-badge { background: var(--blue); color: white; border-radius: 12px; padding: 2px 10px; font-size: .75em; }
+
+  /* Footer */
+  .footer { text-align: center; color: var(--grey); font-size: .8em; padding: 20px; }
+
+  /* Alerte dates */
+  .alert { background: var(--orange-bg); border-left: 4px solid var(--orange); padding: 12px 16px; border-radius: 0 8px 8px 0; margin-bottom: 16px; font-size: .9em; }
+  .alert strong { color: var(--orange); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📋 Tableau de bord PTP — Chris Gnabroyou</h1>
+  <div class="meta">
+    Technicien ascensoriste → Licence Pro Automatismes/IoT | Rentrée Septembre 2026 |
+    Dernière mise à jour : 12/03/2026 à 12:30
+  </div>
+</div>
+
+<div class="nav">
+  <a href="index.html" class="active">🏠 Vue d'ensemble</a>
+  <a href="ecoles.html">🏫 Écoles contactées</a>
+</div>
+
+<div class="container">
+
+  <!-- Alertes dates limites -->
+  <div class="alert">
+    <strong>⚡ Action prioritaire :</strong>
+    Dépôt dossier PTP minimum 3 mois avant la rentrée → avant juin 2026.
+    Candidatures IUT : mars–mai 2026. <a href="ecoles.html">Voir le tableau des écoles →</a>
+  </div>
+
+  <!-- KPIs -->
+  <div class="cards">
+    <div class="card">
+      <div class="num">14</div>
+      <div class="label">Établissements ciblés</div>
+    </div>
+    <div class="card ">
+      <div class="num">0</div>
+      <div class="label">Brouillons prêts</div>
+    </div>
+    <div class="card orange">
+      <div class="num">0</div>
+      <div class="label">Écoles contactées</div>
+    </div>
+    <div class="card ">
+      <div class="num">0</div>
+      <div class="label">Réponses reçues</div>
+    </div>
+    <div class="card ">
+      <div class="num">0</div>
+      <div class="label">Admissions</div>
+    </div>
+  </div>
+
+  <!-- Section 1 : Documents -->
+  <div class="section">
+    <h2>📄 Documents du dossier PTP</h2>
+    <ul class="checklist">
+      <li class="done">
+        <span class="auto-check">✅</span>
+        <div class="item-text">
+          <div class="item-title">Lettre de motivation — Transitions Pro (CPIR)</div>
+          <div class="item-desc">
+            Générée : outputs/dossier_ptp/lettre_motivation_transitions_pro.docx
+          </div>
+        </div>
+        <span class="badge auto">✓ Auto</span>
+      </li>
+      <li class="done">
+        <span class="auto-check">✅</span>
+        <div class="item-text">
+          <div class="item-title">Lettre de motivation — IUT (admissions)</div>
+          <div class="item-desc">
+            Générée : outputs/dossier_ptp/lettre_motivation_iut.docx
+          </div>
+        </div>
+        <span class="badge auto">✓ Auto</span>
+      </li>
+      <li class="done">
+        <span class="auto-check">✅</span>
+        <div class="item-text">
+          <div class="item-title">Planning démarches PTP (.xlsx)</div>
+          <div class="item-desc">
+            Généré : outputs/dossier_ptp/planning_demarches_ptp.xlsx
+          </div>
+        </div>
+        <span class="badge auto">✓ Auto</span>
+      </li>
+      <li class="done">
+        <span class="auto-check">✅</span>
+        <div class="item-text">
+          <div class="item-title">Liste IUT contacts (.xlsx)</div>
+          <div class="item-desc">
+            Générée : outputs/dossier_ptp/liste_iut_contacts.xlsx
+          </div>
+        </div>
+        <span class="badge auto">✓ Auto</span>
+      </li>
+      <li class="todo" id="li-cv">
+        <div class="check-wrap">
+          <input type="checkbox" id="cb-cv" onchange="saveCheck('cv', this.checked)">
+          <div class="check-box"></div>
+        </div>
+        <div class="item-text">
+          <div class="item-title">CV actualisé (orienté reconversion tech)</div>
+          <div class="item-desc">Vous avez déjà un CV — vérifiez qu'il mentionne : variateurs, API, NF EN 81, diagnostic</div>
+        </div>
+        <span class="badge manual">Manuel</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Section 2 : Démarches PTP -->
+  <div class="section">
+    <h2>🔁 Étapes du dossier PTP</h2>
+    <ul class="checklist">
+      <li class="done" id="li-etape-1">
+        <span class="auto-check">✅</span>
+        <div class="item-text">
+          <div class="item-title">1. Vérifier éligibilité PTP</div>
+          <div class="item-desc"><strong>Transitions Pro (CPIR)</strong> — Immédiat — CDI/CDD + 24 mois d'expérience dont 12 chez employeur actuel requis</div>
+        </div>
+        <span class="badge auto">✓ Fait</span>
+      </li>
+      <li class="pending" id="li-etape-2">
+        <span style="font-size:1.3em">🔄</span>
+        <div class="item-text">
+          <div class="item-title">2. Choisir la formation cible</div>
+          <div class="item-desc"><strong>Personnel</strong> — Mars 2026 — Priorité : Licence Pro AII. Explorer aussi SARII et IA Industrie 4.0</div>
+        </div>
+        <span class="badge manual">🔄 En cours</span>
+      </li>
+      <li class="todo" id="li-etape-3">
+        <div class="check-wrap">
+              <input type="checkbox" id="cb-etape-3" onchange="saveCheck('etape-3', this.checked)">
+              <div class="check-box"></div>
+            </div>
+        <div class="item-text">
+          <div class="item-title">3. Contacter Transitions Pro de sa région</div>
+          <div class="item-desc"><strong>Transitions Pro (CPIR)</strong> — Avril 2026 — www.transitionspro.fr — prendre RDV pour accompagnement dossier</div>
+        </div>
+        <span class="badge manual">À faire</span>
+      </li>
+      <li class="todo" id="li-etape-4">
+        <div class="check-wrap">
+              <input type="checkbox" id="cb-etape-4" onchange="saveCheck('etape-4', this.checked)">
+              <div class="check-box"></div>
+            </div>
+        <div class="item-text">
+          <div class="item-title">4. Déposer le dossier PTP</div>
+          <div class="item-desc"><strong>Transitions Pro (CPIR)</strong> — Juin 2026 — Minimum 3 mois avant début de formation (rentrée sept. 2026)</div>
+        </div>
+        <span class="badge manual">À faire</span>
+      </li>
+      <li class="todo" id="li-etape-5">
+        <div class="check-wrap">
+              <input type="checkbox" id="cb-etape-5" onchange="saveCheck('etape-5', this.checked)">
+              <div class="check-box"></div>
+            </div>
+        <div class="item-text">
+          <div class="item-title">5. Informer l'employeur</div>
+          <div class="item-desc"><strong>Employeur actuel</strong> — Juin 2026 — Lettre recommandée AR de demande de congé formation</div>
+        </div>
+        <span class="badge manual">À faire</span>
+      </li>
+      <li class="pending" id="li-etape-6">
+        <span style="font-size:1.3em">🔄</span>
+        <div class="item-text">
+          <div class="item-title">6. Candidater auprès des IUT cibles</div>
+          <div class="item-desc"><strong>IUT / Universités</strong> — Mars–Mai 2026 — Candidatures sur eCandidat / Parcoursup ou directement via email</div>
+        </div>
+        <span class="badge manual">🔄 En cours</span>
+      </li>
+      <li class="todo" id="li-etape-7">
+        <div class="check-wrap">
+              <input type="checkbox" id="cb-etape-7" onchange="saveCheck('etape-7', this.checked)">
+              <div class="check-box"></div>
+            </div>
+        <div class="item-text">
+          <div class="item-title">7. Confirmer le financement PTP</div>
+          <div class="item-desc"><strong>Transitions Pro (CPIR)</strong> — Juillet 2026 — Réponse environ 2 mois après dépôt dossier. Couvre frais pédagogiques + salaire</div>
+        </div>
+        <span class="badge manual">À faire</span>
+      </li>
+      <li class="todo" id="li-etape-8">
+        <div class="check-wrap">
+              <input type="checkbox" id="cb-etape-8" onchange="saveCheck('etape-8', this.checked)">
+              <div class="check-box"></div>
+            </div>
+        <div class="item-text">
+          <div class="item-title">8. Début de formation</div>
+          <div class="item-desc"><strong>IUT sélectionné</strong> — Septembre 2026 — Rentrée universitaire 2026–2027</div>
+        </div>
+        <span class="badge manual">À faire</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Section 3 : Candidatures par formation -->
+  <div class="section">
+    <h2>🏫 Candidatures par formation</h2>
+    <div class="progress-wrap">
+      <div class="progress-bar" id="prog-bar" style="width: 0%"></div>
+    </div>
+    <p style="font-size:.82em;color:var(--grey);margin-bottom:16px">
+      0 / 14 établissements contactés ou en cours
+      — <a href="ecoles.html">Voir le détail complet →</a>
+    </p>
+    <div class="form-grid" id="formations-grid">
+    <div class="form-row">
+      <div class="form-header">
+        <span>⭐ Priorité 1 — Licence Pro Automatismes et Informatique Industrielle</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="prio-badge">5 établissements</span>
+          <span class="toggle-icon">▼</span>
+        </div>
+      </div>
+      <div class="form-body">
+        <p style="color:var(--grey);font-size:.85em;margin-bottom:10px">
+          Compétences visées : Automatismes (API Siemens, Schneider) · Réseaux industriels (Profibus, Ethernet industriel) · Supervision SCADA
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.88em">
+          <thead>
+            <tr style="background:var(--blue-pale)">
+              <th style="padding:6px 10px;text-align:left">Établissement</th>
+              <th style="padding:6px 10px;text-align:left">Ville</th>
+              <th style="padding:6px 10px;text-align:left">Date limite</th>
+              <th style="padding:6px 10px;text-align:left">Détail</th>
+            </tr>
+          </thead>
+          <tbody>
+          <tr>
+            <td>IUT de Nantes</td>
+            <td>Nantes</td>
+            <td>Mai 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          <tr>
+            <td>IUT Grenoble Alpes</td>
+            <td>Grenoble</td>
+            <td>Avril 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          <tr>
+            <td>IUT Lyon 1</td>
+            <td>Lyon</td>
+            <td>Mai 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          <tr>
+            <td>IUT Paris-Saclay (Orsay)</td>
+            <td>Orsay</td>
+            <td>Avril 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          <tr>
+            <td>IUT de Bordeaux</td>
+            <td>Bordeaux</td>
+            <td>Mai 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-header">
+        <span>⭐ Priorité 2 — Licence Pro SARII (Systèmes Automatisés, Réseaux et Informatique Industrielle)</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="prio-badge">3 établissements</span>
+          <span class="toggle-icon">▼</span>
+        </div>
+      </div>
+      <div class="form-body">
+        <p style="color:var(--grey);font-size:.85em;margin-bottom:10px">
+          Compétences visées : IoT industriel · Systèmes embarqués · Télémaintenance
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.88em">
+          <thead>
+            <tr style="background:var(--blue-pale)">
+              <th style="padding:6px 10px;text-align:left">Établissement</th>
+              <th style="padding:6px 10px;text-align:left">Ville</th>
+              <th style="padding:6px 10px;text-align:left">Date limite</th>
+              <th style="padding:6px 10px;text-align:left">Détail</th>
+            </tr>
+          </thead>
+          <tbody>
+          <tr>
+            <td>IUT Cachan (Paris-Saclay)</td>
+            <td>Cachan</td>
+            <td>Avril 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          <tr>
+            <td>IUT de Valenciennes</td>
+            <td>Valenciennes</td>
+            <td>Mai 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          <tr>
+            <td>IUT de Rennes</td>
+            <td>Rennes</td>
+            <td>Mai 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-header">
+        <span>⭐ Priorité 3 — Licence Pro IA pour l'Industrie / Data Industrie 4.0</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="prio-badge">2 établissements</span>
+          <span class="toggle-icon">▼</span>
+        </div>
+      </div>
+      <div class="form-body">
+        <p style="color:var(--grey);font-size:.85em;margin-bottom:10px">
+          Compétences visées : Python, machine learning appliqué · Traitement de données industrielles · Maintenance prédictive
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.88em">
+          <thead>
+            <tr style="background:var(--blue-pale)">
+              <th style="padding:6px 10px;text-align:left">Établissement</th>
+              <th style="padding:6px 10px;text-align:left">Ville</th>
+              <th style="padding:6px 10px;text-align:left">Date limite</th>
+              <th style="padding:6px 10px;text-align:left">Détail</th>
+            </tr>
+          </thead>
+          <tbody>
+          <tr>
+            <td>IUT de Bordeaux</td>
+            <td>Bordeaux</td>
+            <td>Mai 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          <tr>
+            <td>IUT de Valenciennes</td>
+            <td>Valenciennes</td>
+            <td>Mai 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-header">
+        <span>⭐ Priorité 4 — Licence Pro Cybersécurité des Systèmes Industriels (OT Security)</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="prio-badge">2 établissements</span>
+          <span class="toggle-icon">▼</span>
+        </div>
+      </div>
+      <div class="form-body">
+        <p style="color:var(--grey);font-size:.85em;margin-bottom:10px">
+          Compétences visées : Sécurité réseaux SCADA · Protocoles industriels (Modbus, Profibus) · Audit de sécurité OT
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.88em">
+          <thead>
+            <tr style="background:var(--blue-pale)">
+              <th style="padding:6px 10px;text-align:left">Établissement</th>
+              <th style="padding:6px 10px;text-align:left">Ville</th>
+              <th style="padding:6px 10px;text-align:left">Date limite</th>
+              <th style="padding:6px 10px;text-align:left">Détail</th>
+            </tr>
+          </thead>
+          <tbody>
+          <tr>
+            <td>IUT de Valenciennes</td>
+            <td>Valenciennes</td>
+            <td>Avril 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          <tr>
+            <td>IMT Nord Europe</td>
+            <td>Douai</td>
+            <td>Avril 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-header">
+        <span>⭐ Priorité 5 — Licence Pro Électronique de Puissance et Conversion d'Énergie</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="prio-badge">2 établissements</span>
+          <span class="toggle-icon">▼</span>
+        </div>
+      </div>
+      <div class="form-body">
+        <p style="color:var(--grey);font-size:.85em;margin-bottom:10px">
+          Compétences visées : Variateurs de fréquence · Onduleurs et convertisseurs · Stockage d'énergie
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.88em">
+          <thead>
+            <tr style="background:var(--blue-pale)">
+              <th style="padding:6px 10px;text-align:left">Établissement</th>
+              <th style="padding:6px 10px;text-align:left">Ville</th>
+              <th style="padding:6px 10px;text-align:left">Date limite</th>
+              <th style="padding:6px 10px;text-align:left">Détail</th>
+            </tr>
+          </thead>
+          <tbody>
+          <tr>
+            <td>IUT Cachan (Paris-Saclay)</td>
+            <td>Cachan</td>
+            <td>Avril 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          <tr>
+            <td>IUT Grenoble Alpes</td>
+            <td>Grenoble</td>
+            <td>Mai 2026</td>
+            <td><a href="ecoles.html">Voir →</a></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <!-- Section 4 : Financement PTP -->
+  <div class="section">
+    <h2>💰 Financement PTP — Transitions Pro</h2>
+    <ul class="checklist">
+      <li class="done">
+        <span class="auto-check">✅</span>
+        <div class="item-text">
+          <div class="item-title">Vérification éligibilité PTP</div>
+          <div class="item-desc">CDI/CDD + 24 mois d'expérience dont 12 chez l'employeur actuel ✓</div>
+        </div>
+        <span class="badge auto">✓ Fait</span>
+      </li>
+      <li class="todo" id="li-rdv-tp">
+        <div class="check-wrap">
+          <input type="checkbox" id="cb-rdv-tp" onchange="saveCheck('rdv-tp', this.checked)">
+          <div class="check-box"></div>
+        </div>
+        <div class="item-text">
+          <div class="item-title">Prendre RDV avec Transitions Pro de votre région</div>
+          <div class="item-desc">
+            Site : <a href="https://www.transitionspro.fr" target="_blank">www.transitionspro.fr</a>
+            — Accompagnement gratuit pour monter le dossier
+          </div>
+        </div>
+        <span class="badge manual">Manuel</span>
+      </li>
+      <li class="todo" id="li-dossier-tp">
+        <div class="check-wrap">
+          <input type="checkbox" id="cb-dossier-tp" onchange="saveCheck('dossier-tp', this.checked)">
+          <div class="check-box"></div>
+        </div>
+        <div class="item-text">
+          <div class="item-title">Dépôt dossier PTP</div>
+          <div class="item-desc">Avant juin 2026 (3 mois avant rentrée septembre 2026)</div>
+        </div>
+        <span class="badge manual">Manuel</span>
+      </li>
+      <li class="todo" id="li-info-employeur">
+        <div class="check-wrap">
+          <input type="checkbox" id="cb-info-employeur" onchange="saveCheck('info-employeur', this.checked)">
+          <div class="check-box"></div>
+        </div>
+        <div class="item-text">
+          <div class="item-title">Informer l'employeur (lettre recommandée)</div>
+          <div class="item-desc">Demande de congé formation — à envoyer après accord Transitions Pro</div>
+        </div>
+        <span class="badge manual">Manuel</span>
+      </li>
+      <li class="todo" id="li-financement-ok">
+        <div class="check-wrap">
+          <input type="checkbox" id="cb-financement-ok" onchange="saveCheck('financement-ok', this.checked)">
+          <div class="check-box"></div>
+        </div>
+        <div class="item-text">
+          <div class="item-title">Confirmation financement reçue</div>
+          <div class="item-desc">Réponse ~2 mois après dépôt dossier. Couvre frais pédagogiques + salaire maintenu</div>
+        </div>
+        <span class="badge manual">Manuel</span>
+      </li>
+    </ul>
+  </div>
+
+</div>
+
+<div class="footer">
+  Système PTP Multi-Agents — Chris Gnabroyou |
+  Généré le 12/03/2026 à 12:30 |
+  <a href="ecoles.html">Tableau des écoles →</a>
+</div>
+
+<script>
+// --- Persistance des coches manuelles ---
+const KEY = 'ptp_checks_Chris_Gnabroyou';
+
+function saveCheck(id, checked) {
+  const data = JSON.parse(localStorage.getItem(KEY) || '{}');
+  data[id] = checked;
+  localStorage.setItem(KEY, JSON.stringify(data));
+  updateStyle(id, checked);
+}
+
+function updateStyle(id, checked) {
+  const li = document.getElementById('li-' + id);
+  if (!li) return;
+  li.classList.remove('done', 'pending', 'todo');
+  li.classList.add(checked ? 'done' : 'todo');
+}
+
+function loadChecks() {
+  const data = JSON.parse(localStorage.getItem(KEY) || '{}');
+  for (const [id, checked] of Object.entries(data)) {
+    const cb = document.getElementById('cb-' + id);
+    if (cb) {
+      cb.checked = checked;
+      updateStyle(id, checked);
+    }
+  }
+}
+
+// --- Accordéon formations ---
+document.querySelectorAll('.form-header').forEach(h => {
+  h.addEventListener('click', () => {
+    const body = h.nextElementSibling;
+    body.classList.toggle('open');
+    h.querySelector('.toggle-icon').textContent = body.classList.contains('open') ? '▲' : '▼';
+  });
+});
+
+// Ouvrir la première formation par défaut
+const firstBody = document.querySelector('.form-body');
+const firstIcon = document.querySelector('.toggle-icon');
+if (firstBody) { firstBody.classList.add('open'); }
+if (firstIcon) { firstIcon.textContent = '▲'; }
+
+loadChecks();
+</script>
+</body>
+</html>
