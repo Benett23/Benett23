@@ -5,7 +5,7 @@ Agent de débrief — compile toutes les activités de la session et envoie un e
 import json
 import os
 from datetime import datetime
-import anthropic
+from ptp_system.core.claude_cli import ClaudeCliClient
 
 from ptp_system.config import CANDIDAT
 from ptp_system.tools.gmail_tools import envoyer_debrief
@@ -40,7 +40,7 @@ Le rapport doit être :
     LOGS_DIR = os.getenv("LOGS_DIR", "outputs/logs")
 
     def __init__(self):
-        self.client = anthropic.Anthropic()
+        self.client = ClaudeCliClient()
         self.conversations: list[dict] = []
 
     def _generer_html_debrief(

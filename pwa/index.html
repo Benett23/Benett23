@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PTP">
+<meta name="theme-color" content="#1F497D">
+<title>PTP — Tableau de bord</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+
+<!-- Supabase JS (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- OneSignal SDK -->
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
+<style>
+/* ── Reset & Variables ─────────────────────────────────────── */
+:root {
+  --blue: #1F497D;
+  --blue-light: #4472C4;
+  --blue-pale: #EBF3FB;
+  --green: #107c10;
+  --green-bg: #dff0d8;
+  --orange: #c07020;
+  --orange-bg: #fff3cd;
+  --red: #c00;
+  --red-bg: #fce4d6;
+  --grey: #666;
+  --border: #e5e5ea;
+  --card-bg: #fff;
+  --page-bg: #f2f2f7;
+  --text: #1c1c1e;
+  --text-2: #3c3c43;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 20px);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --card-bg: #1c1c1e;
+    --page-bg: #000;
+    --text: #fff;
+    --text-2: #ebebf5cc;
+    --border: #38383a;
+    --blue-pale: #0a2040;
+    --green-bg: #0a2a0a;
+    --orange-bg: #2a1a00;
+  }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--page-bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+/* ── Header ──────────────────────────────────────────────────── */
+.header {
+  background: var(--blue);
+  color: white;
+  padding: calc(var(--safe-top) + 16px) 20px 16px;
+  position: sticky; top: 0; z-index: 50;
+}
+.header-row { display: flex; align-items: center; justify-content: space-between; }
+.header h1 { font-size: 1.2em; font-weight: 700; }
+.header .sub { font-size: .82em; opacity: .8; margin-top: 2px; }
+.sync-btn {
+  background: rgba(255,255,255,.2); border: none; color: white;
+  padding: 7px 14px; border-radius: 16px; font-size: .82em;
+  font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;
+}
+.sync-btn:active { background: rgba(255,255,255,.3); }
+
+/* ── Scroll container ─────────────────────────────────────────── */
+.scroll { padding: 16px 16px calc(var(--safe-bottom) + 70px); overflow-y: auto; }
+
+/* ── Loading ──────────────────────────────────────────────────── */
+.loading { text-align: center; padding: 60px 20px; color: var(--grey); }
+.spinner {
+  width: 40px; height: 40px; border: 3px solid var(--border);
+  border-top-color: var(--blue); border-radius: 50%;
+  animation: spin .7s linear infinite; margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── KPI Cards ───────────────────────────────────────────────── */
+.kpi-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; margin-bottom: 16px;
+}
+.kpi {
+  background: var(--card-bg); border-radius: 14px;
+  padding: 14px 10px; text-align: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+.kpi .num { font-size: 2em; font-weight: 700; color: var(--blue); line-height: 1; }
+.kpi .label { font-size: .72em; color: var(--grey); margin-top: 4px; }
+.kpi.green .num { color: var(--green); }
+.kpi.orange .num { color: var(--orange); }
+
+/* ── Section cards ───────────────────────────────────────────── */
+.section {
+  background: var(--card-bg); border-radius: 16px;
+  overflow: hidden; margin-bottom: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+.section-header {
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+  font-weight: 700; font-size: .95em; color: var(--blue);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.section-header span { font-size: .8em; color: var(--grey); font-weight: 400; }
+
+/* ── Check list ──────────────────────────────────────────────── */
+.checklist { list-style: none; }
+.check-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px; border-bottom: 1px solid var(--border);
+}
+.check-item:last-child { border-bottom: none; }
+.check-icon { font-size: 1.3em; flex-shrink: 0; }
+.check-text { flex: 1; }
+.check-title { font-size: .92em; font-weight: 600; }
+.check-desc { font-size: .78em; color: var(--grey); margin-top: 2px; }
+
+/* ── Alerte ──────────────────────────────────────────────────── */
+.alert {
+  background: var(--orange-bg); border-radius: 14px;
+  padding: 14px 16px; margin-bottom: 14px;
+  border-left: 4px solid var(--orange);
+  font-size: .88em; line-height: 1.5;
+}
+.alert strong { color: var(--orange); }
+
+/* ── Étapes liste ────────────────────────────────────────────── */
+.step-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+}
+.step-item:last-child { border-bottom: none; }
+.step-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--blue-pale); color: var(--blue);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8em; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+}
+.step-num.done { background: var(--green-bg); color: var(--green); }
+.step-num.doing { background: var(--orange-bg); color: var(--orange); }
+.step-body { flex: 1; }
+.step-title { font-size: .9em; font-weight: 600; }
+.step-desc { font-size: .77em; color: var(--grey); margin-top: 3px; line-height: 1.4; }
+.step-badge {
+  font-size: .7em; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+  white-space: nowrap; align-self: center; flex-shrink: 0;
+}
+.badge-done { background: var(--green-bg); color: var(--green); }
+.badge-doing { background: var(--orange-bg); color: var(--orange); }
+.badge-todo { background: var(--blue-pale); color: var(--blue); }
+
+/* ── Bottom nav ──────────────────────────────────────────────── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--card-bg); border-top: 1px solid var(--border);
+  display: flex;
+  padding: 0 0 var(--safe-bottom);
+  z-index: 100;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 10px 4px 6px; text-decoration: none;
+  color: var(--grey); font-size: .65em; font-weight: 500; gap: 3px;
+  transition: color .15s;
+}
+.nav-item.active { color: var(--blue); }
+.nav-icon { font-size: 1.6em; }
+
+/* ── Progress bar ───────────────────────────────────────────── */
+.progress-wrap { background: var(--border); border-radius: 6px; height: 8px; margin: 12px 16px; }
+.progress-bar { height: 100%; border-radius: 6px; background: var(--blue); transition: width .8s ease; }
+
+/* ── Formations mini-list ────────────────────────────────────── */
+.form-item {
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.form-item:last-child { border-bottom: none; }
+.prio-dot {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--blue-pale); color: var(--blue);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: .85em; flex-shrink: 0;
+}
+.form-info { flex: 1; }
+.form-name { font-size: .88em; font-weight: 600; }
+.form-count { font-size: .75em; color: var(--grey); margin-top: 2px; }
+.chevron { color: var(--grey); font-size: 1em; }
+
+/* ── Refresh animation ───────────────────────────────────────── */
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.refreshing { animation: pulse .8s ease infinite; }
+
+/* ── Notification banner ─────────────────────────────────────── */
+.notif-banner {
+  background: var(--blue); color: white;
+  padding: 12px 16px; border-radius: 14px; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 12px; cursor: pointer;
+}
+.notif-banner p { flex: 1; font-size: .88em; }
+.notif-banner button {
+  background: rgba(255,255,255,.2); color: white; border: none;
+  padding: 7px 14px; border-radius: 12px; font-size: .8em;
+  font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-row">
+    <div>
+      <h1>📋 PTP — Tableau de bord</h1>
+      <div class="sub" id="last-update">Chargement…</div>
+    </div>
+    <button class="sync-btn" onclick="chargerDonnees(true)" id="sync-btn">
+      🔄 Sync
+    </button>
+  </div>
+</div>
+
+<div class="scroll" id="main-content">
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Chargement des données…</p>
+  </div>
+
+  <!-- Contenu (masqué pendant loading) -->
+  <div id="content" style="display:none">
+
+    <!-- Banner notification push -->
+    <div class="notif-banner" id="notif-banner" style="display:none">
+      <span style="font-size:1.5em">🔔</span>
+      <p>Activez les notifications pour recevoir votre brief journalier</p>
+      <button onclick="activerNotifications()">Activer</button>
+    </div>
+
+    <!-- Alerte -->
+    <div class="alert">
+      <strong>⚡ Action prioritaire :</strong>
+      Dépôt dossier PTP minimum 3 mois avant la rentrée → avant juin 2026.
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi"><div class="num" id="k-total">—</div><div class="label">Établissements</div></div>
+      <div class="kpi" id="kpi-brouillon"><div class="num" id="k-brouillon">—</div><div class="label">Brouillons</div></div>
+      <div class="kpi" id="kpi-contacte"><div class="num" id="k-contacte">—</div><div class="label">Contactés</div></div>
+      <div class="kpi"><div class="num" id="k-attente">—</div><div class="label">En attente</div></div>
+      <div class="kpi" id="kpi-reponse"><div class="num" id="k-reponse">—</div><div class="label">Réponses</div></div>
+      <div class="kpi" id="kpi-admis"><div class="num" id="k-admis">—</div><div class="label">Admissions</div></div>
+    </div>
+
+    <!-- Progression globale -->
+    <div class="section">
+      <div class="section-header">
+        📊 Progression <span id="prog-label">0 / 0</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="prog-bar" style="width:0%"></div>
+      </div>
+      <a href="ecoles.html" style="display:flex;align-items:center;justify-content:center;padding:13px;font-size:.88em;font-weight:600;color:var(--blue);text-decoration:none">
+        Voir le tableau des écoles →
+      </a>
+    </div>
+
+    <!-- Documents -->
+    <div class="section">
+      <div class="section-header">📄 Documents générés</div>
+      <ul class="checklist" id="docs-list">
+        <li class="check-item">
+          <span class="check-icon">⏳</span>
+          <div class="check-text">
+            <div class="check-title" style="color:var(--grey)">En attente du premier run Python</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Étapes PTP -->
+    <div class="section">
+      <div class="section-header">🔁 Démarches PTP</div>
+      <div id="etapes-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Bilan de compétences (optionnel)</div>
+            <div class="step-desc">CEP / organisme agréé — Avant tout dépôt de dossier</div>
+          </div>
+          <span class="step-badge badge-todo">À faire</span>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">RDV Transitions Pro</div>
+            <div class="step-desc">transitionspro.fr — Accompagnement gratuit pour monter le dossier</div>
+          </div>
+          <span class="step-badge badge-todo">À faire</span>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Candidatures IUT</div>
+            <div class="step-desc">Parcoursup + dossiers directs — Mars–Mai 2026</div>
+          </div>
+          <span class="step-badge badge-doing">🔄 En cours</span>
+        </div>
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Dépôt dossier PTP</div>
+            <div class="step-desc">Transitions Pro — Avant juin 2026 (3 mois avant rentrée)</div>
+          </div>
+          <span class="step-badge badge-todo">À faire</span>
+        </div>
+        <div class="step-item">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <div class="step-title">Réponse Transitions Pro</div>
+            <div class="step-desc">~2 mois après dépôt — Financement formation + salaire maintenu</div>
+          </div>
+          <span class="step-badge badge-todo">À faire</span>
+        </div>
+        <div class="step-item">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <div class="step-title">Information employeur</div>
+            <div class="step-desc">Lettre recommandée — Après accord Transitions Pro</div>
+          </div>
+          <span class="step-badge badge-todo">À faire</span>
+        </div>
+        <div class="step-item">
+          <div class="step-num">7</div>
+          <div class="step-body">
+            <div class="step-title">Intégration formation</div>
+            <div class="step-desc">Rentrée septembre 2026</div>
+          </div>
+          <span class="step-badge badge-todo">À faire</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Formations -->
+    <div class="section">
+      <div class="section-header">🏫 Formations ciblées</div>
+      <div id="formations-list">
+        <div class="form-item">
+          <div class="prio-dot">⭐1</div>
+          <div class="form-info">
+            <div class="form-name">LP Automatismes Industriels & IoT</div>
+            <div class="form-count">6 établissements</div>
+          </div>
+          <span class="chevron">›</span>
+        </div>
+        <div class="form-item">
+          <div class="prio-dot">⭐2</div>
+          <div class="form-info">
+            <div class="form-name">Licence Pro SARII</div>
+            <div class="form-count">4 établissements</div>
+          </div>
+          <span class="chevron">›</span>
+        </div>
+        <div class="form-item">
+          <div class="prio-dot">⭐3</div>
+          <div class="form-info">
+            <div class="form-name">BUT GIM / Génie Industriel</div>
+            <div class="form-count">4 établissements</div>
+          </div>
+          <span class="chevron">›</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+  </div><!-- /content -->
+
+</div>
+
+<!-- Bottom navigation -->
+<nav class="bottom-nav">
+  <a href="index.html" class="nav-item active">
+    <span class="nav-icon">🏠</span>
+    Vue d'ensemble
+  </a>
+  <a href="ecoles.html" class="nav-item">
+    <span class="nav-icon">🏫</span>
+    Écoles
+  </a>
+  <a href="#" class="nav-item" onclick="chargerDonnees(true);return false;">
+    <span class="nav-icon">🔄</span>
+    Actualiser
+  </a>
+</nav>
+
+<script>
+// ── Config Supabase (valeurs remplacées au déploiement) ──────────────────────
+const SUPABASE_URL = '__SUPABASE_URL__';
+const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+const ONESIGNAL_APP_ID = '__ONESIGNAL_APP_ID__';
+
+let supabase = null;
+
+if (SUPABASE_URL && SUPABASE_URL !== '__SUPABASE_URL__') {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+// ── OneSignal init ────────────────────────────────────────────────────────────
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal) {
+  if (!ONESIGNAL_APP_ID || ONESIGNAL_APP_ID === '__ONESIGNAL_APP_ID__') return;
+  await OneSignal.init({
+    appId: ONESIGNAL_APP_ID,
+    safari_web_id: 'web.onesignal.auto.' + ONESIGNAL_APP_ID,
+    notifyButton: { enable: false },
+    allowLocalhostAsSecureOrigin: true,
+  });
+  const permission = await OneSignal.getNotificationPermission();
+  if (permission !== 'granted') {
+    document.getElementById('notif-banner').style.display = 'flex';
+  }
+});
+
+async function activerNotifications() {
+  OneSignalDeferred.push(async (OneSignal) => {
+    await OneSignal.showSlidedownPrompt();
+    document.getElementById('notif-banner').style.display = 'none';
+  });
+}
+
+// ── Chargement des données ───────────────────────────────────────────────────
+async function chargerDonnees(forceRefresh = false) {
+  const btn = document.getElementById('sync-btn');
+  btn.classList.add('refreshing');
+  btn.textContent = '⏳';
+
+  try {
+    if (supabase) {
+      await chargerDepuisSupabase();
+    } else {
+      // Mode offline / démo : données localStorage
+      chargerDepuisLocalStorage();
+    }
+  } catch (err) {
+    console.error('Erreur chargement:', err);
+    chargerDepuisLocalStorage();
+  } finally {
+    btn.classList.remove('refreshing');
+    btn.textContent = '🔄 Sync';
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+  }
+}
+
+async function chargerDepuisSupabase() {
+  const { data: ecoles, error } = await supabase
+    .from('schools_tracking')
+    .select('*')
+    .order('formation_priorite', { ascending: true });
+
+  if (error) throw error;
+
+  const stats = calculerStats(ecoles);
+  mettreAJourUI(stats, ecoles);
+
+  const now = new Date().toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('last-update').textContent = `Mis à jour à ${now}`;
+  localStorage.setItem('ptp_ecoles_cache', JSON.stringify({ ecoles, ts: Date.now() }));
+}
+
+function chargerDepuisLocalStorage() {
+  const cached = localStorage.getItem('ptp_ecoles_cache');
+  if (cached) {
+    const { ecoles, ts } = JSON.parse(cached);
+    const stats = calculerStats(ecoles);
+    mettreAJourUI(stats, ecoles);
+    const d = new Date(ts);
+    document.getElementById('last-update').textContent =
+      `Cache du ${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}`;
+  } else {
+    document.getElementById('last-update').textContent = 'En attente de synchronisation';
+    mettreAJourUI({}, []);
+  }
+}
+
+function calculerStats(ecoles) {
+  const s = {
+    total: ecoles.length,
+    a_contacter: 0, brouillon_pret: 0, contacte: 0,
+    en_attente: 0, reponse_recue: 0, admis: 0,
+  };
+  ecoles.forEach(e => {
+    const st = e.statut || 'À contacter';
+    if (st === 'À contacter') s.a_contacter++;
+    else if (st === 'Brouillon prêt') s.brouillon_pret++;
+    else if (st === 'Contacté') s.contacte++;
+    else if (st === 'En attente') s.en_attente++;
+    else if (st === 'Réponse reçue') s.reponse_recue++;
+    else if (st === 'Admis') s.admis++;
+  });
+  return s;
+}
+
+function mettreAJourUI(stats, ecoles) {
+  const total = stats.total || 0;
+  document.getElementById('k-total').textContent = total;
+  document.getElementById('k-brouillon').textContent = stats.brouillon_pret || 0;
+  document.getElementById('k-contacte').textContent = stats.contacte || 0;
+  document.getElementById('k-attente').textContent = stats.en_attente || 0;
+  document.getElementById('k-reponse').textContent = stats.reponse_recue || 0;
+  document.getElementById('k-admis').textContent = stats.admis || 0;
+
+  // Couleurs KPI
+  const b = stats.brouillon_pret || 0;
+  const c = stats.contacte || 0;
+  const r = stats.reponse_recue || 0;
+  const a = stats.admis || 0;
+  document.getElementById('kpi-brouillon').className = 'kpi' + (b > 0 ? ' orange' : '');
+  document.getElementById('kpi-contacte').className = 'kpi' + (c > 0 ? ' green' : '');
+  document.getElementById('kpi-reponse').className = 'kpi' + (r > 0 ? ' green' : '');
+  document.getElementById('kpi-admis').className = 'kpi' + (a > 0 ? ' green' : '');
+
+  // Progression
+  const actifs = (stats.contacte || 0) + (stats.brouillon_pret || 0);
+  const pct = total > 0 ? Math.round(actifs * 100 / total) : 0;
+  document.getElementById('prog-bar').style.width = pct + '%';
+  document.getElementById('prog-label').textContent = `${actifs} / ${total}`;
+
+  // Documents (état de la session actuelle)
+  const docsHtml = [
+    { type: 'lettre_transitions_pro', label: 'Lettre Transitions Pro', icon: '📄' },
+    { type: 'lettre_iut', label: 'Lettre motivation IUT', icon: '📄' },
+    { type: 'planning_ptp', label: 'Planning PTP (.xlsx)', icon: '📊' },
+    { type: 'liste_contacts', label: 'Liste contacts IUT (.xlsx)', icon: '📋' },
+    { type: 'cv', label: 'CV actualisé', icon: '📋', manual: true },
+  ];
+  const savedDocs = JSON.parse(localStorage.getItem('ptp_docs_generes') || '[]');
+  document.getElementById('docs-list').innerHTML = docsHtml.map(d => {
+    const done = savedDocs.includes(d.type);
+    return `<li class="check-item">
+      <span class="check-icon">${done ? '✅' : (d.manual ? '⬜' : '⏳')}</span>
+      <div class="check-text">
+        <div class="check-title${done ? '' : ' '}" style="${done ? '' : 'color:var(--grey)'}">${d.icon} ${d.label}</div>
+        <div class="check-desc">${done ? 'Généré' : (d.manual ? 'À faire manuellement' : 'Sera généré par le système')}</div>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+// ── Service Worker ────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// ── Supabase real-time subscription ──────────────────────────────────────────
+function abonnerTempsReel() {
+  if (!supabase) return;
+  supabase
+    .channel('schools-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'schools_tracking' }, () => {
+      chargerDonnees();
+    })
+    .subscribe();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+chargerDonnees();
+abonnerTempsReel();
+</script>
+</body>
+</html>

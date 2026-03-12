@@ -1,0 +1,42 @@
+{
+  "name": "PTP — Suivi candidatures",
+  "short_name": "PTP",
+  "description": "Suivi du dossier PTP et des candidatures IUT — Chris Gnabroyou",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1F497D",
+  "theme_color": "#1F497D",
+  "lang": "fr",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Écoles contactées",
+      "short_name": "Écoles",
+      "description": "Tableau de suivi des établissements",
+      "url": "/ecoles.html",
+      "icons": [{"src": "icons/icon-192.png", "sizes": "192x192"}]
+    }
+  ]
+}

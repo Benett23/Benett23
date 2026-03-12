@@ -10,14 +10,15 @@ Utilisation :
   python main_ptp.py                        → Workflow complet
   python main_ptp.py --mode docs            → Génération documents uniquement
   python main_ptp.py --mode contact         → Recherche + emails uniquement
-  python main_ptp.py --mode full            → Workflow complet (défaut)
+  python main_ptp.py --mode brief           → Brief journalier
+  python main_ptp.py --mode dashboard       → Régénérer dashboard uniquement
   python main_ptp.py --formations lpaii     → Filtrer par formation
   python main_ptp.py --max-etab 3           → Limiter à N établissements
 
 Prérequis :
   pip install -r requirements.txt
   cp .env.example .env
-  # Renseigner ANTHROPIC_API_KEY (et optionnellement GMAIL_USER + GMAIL_APP_PASSWORD)
+  # Pas de clé API requise — utilise claude CLI (abonnement Claude Code)
 """
 
 import argparse
@@ -32,16 +33,19 @@ if not env_file.exists():
     if env_example.exists():
         print("⚠️  Fichier .env manquant. Création depuis .env.example...")
         env_file.write_text(env_example.read_text())
-        print("   → Éditez .env et renseignez votre ANTHROPIC_API_KEY avant de relancer.\n")
+        print("   → Éditez .env si nécessaire, puis relancez.\n")
         sys.exit(1)
 
 from dotenv import load_dotenv
 load_dotenv()
 
-# Vérifier la clé API Anthropic
-if not os.getenv("ANTHROPIC_API_KEY"):
-    print("❌ ANTHROPIC_API_KEY manquante dans le fichier .env")
-    print("   Créez une clé sur : https://console.anthropic.com/settings/keys")
+# Vérifier que claude CLI est disponible (pas de clé API requise)
+from ptp_system.core.claude_cli import verifier_cli_disponible
+if not verifier_cli_disponible():
+    print("\n❌ La commande `claude` est introuvable ou non authentifiée.")
+    print("   1. Installez Claude Code : npm install -g @anthropic-ai/claude-code")
+    print("   2. Authentifiez-vous     : claude auth login")
+    print("   (Aucune clé API nécessaire — utilise votre abonnement Claude Code)")
     sys.exit(1)
 
 

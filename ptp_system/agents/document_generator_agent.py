@@ -6,7 +6,7 @@ Utilise Claude pour valider et personnaliser les documents générés.
 import json
 import os
 from datetime import datetime
-import anthropic
+from ptp_system.core.claude_cli import ClaudeCliClient
 
 from ptp_system.config import CANDIDAT
 from ptp_system.tools.document_tools import (
@@ -129,7 +129,7 @@ Sois efficace et génère tous les documents demandés sans hésitation."""
     ]
 
     def __init__(self):
-        self.client = anthropic.Anthropic()
+        self.client = ClaudeCliClient()
         self.conversations: list[dict] = []
         self.documents_generes: list[dict] = []
 

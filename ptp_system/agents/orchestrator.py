@@ -6,7 +6,7 @@ Coordonne tous les sous-agents et gère le flux de travail.
 import json
 import os
 from datetime import datetime
-import anthropic
+from ptp_system.core.claude_cli import ClaudeCliClient
 
 from ptp_system.config import CANDIDAT, FORMATIONS_CIBLES
 from ptp_system.agents.school_research_agent import SchoolResearchAgent
@@ -15,6 +15,7 @@ from ptp_system.agents.document_generator_agent import DocumentGeneratorAgent
 from ptp_system.agents.debrief_agent import DebriefAgent
 from ptp_system.agents.school_tracker_agent import SchoolTrackerAgent
 from ptp_system.tools.dashboard_tools import generer_tout_dashboard
+from ptp_system.tools.supabase_sync import sync_complet
 
 
 class PTPOrchestrator:
@@ -48,7 +49,7 @@ Sois stratégique : priorise les établissements avec les meilleures adéquation
 et les dates limites les plus proches."""
 
     def __init__(self):
-        self.client = anthropic.Anthropic()
+        self.client = ClaudeCliClient()
         self.session_start = datetime.now().isoformat()
         self.all_conversations: list[dict] = []
         self.all_errors: list[str] = []
@@ -86,6 +87,14 @@ et les dates limites les plus proches."""
         )
         print(f"  🖥️  Dashboard : {paths['index']}")
         print(f"  🏫 Écoles    : {paths['ecoles']}")
+
+        # Synchronisation Supabase + notification push (si configuré)
+        print("  📡 Synchronisation mobile (Supabase)...")
+        sync_complet(
+            ecoles=self.tracker_agent.ecoles,
+            stats=stats,
+            notifier=(resultats_emails is not None and len(resultats_emails or []) > 0),
+        )
         return paths
 
     def run_document_generation(self) -> dict:

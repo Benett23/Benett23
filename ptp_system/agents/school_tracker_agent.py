@@ -7,7 +7,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-import anthropic
+from ptp_system.core.claude_cli import ClaudeCliClient
 
 from ptp_system.config import CANDIDAT, FORMATIONS_CIBLES
 
@@ -124,7 +124,7 @@ Statuts possibles :
 - "Sans suite" : candidature abandonnée"""
 
     def __init__(self):
-        self.client = anthropic.Anthropic()
+        self.client = ClaudeCliClient()
         self.ecoles = charger_tracking()
         self.conversations: list[dict] = []
 

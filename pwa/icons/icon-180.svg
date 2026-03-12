@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
+  <rect width="180" height="180" rx="39" fill="#1F497D"/>
+  <rect x="14" y="14" width="152" height="152" rx="27" fill="#4472C4"/>
+  <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle"
+    font-family="-apple-system,BlinkMacSystemFont,sans-serif"
+    font-size="50" font-weight="800" fill="white">PTP</text>
+</svg>

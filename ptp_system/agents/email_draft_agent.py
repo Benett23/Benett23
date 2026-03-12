@@ -5,7 +5,7 @@ Utilise Claude pour personnaliser chaque email selon l'établissement.
 
 import json
 from datetime import datetime
-import anthropic
+from ptp_system.core.claude_cli import ClaudeCliClient
 
 from ptp_system.config import CANDIDAT, INFO_PTP
 from ptp_system.tools.gmail_tools import sauvegarder_brouillon
@@ -84,7 +84,7 @@ Retourne les emails en HTML bien formaté."""
     ]
 
     def __init__(self):
-        self.client = anthropic.Anthropic()
+        self.client = ClaudeCliClient()
         self.conversations: list[dict] = []
         self.brouillons_crees: list[dict] = []
 

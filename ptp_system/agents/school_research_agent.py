@@ -5,7 +5,7 @@ Utilise Claude pour analyser et enrichir les données de contact des IUT.
 
 import json
 from datetime import datetime
-import anthropic
+from ptp_system.core.claude_cli import ClaudeCliClient
 
 from ptp_system.config import CANDIDAT, FORMATIONS_CIBLES
 from ptp_system.tools.web_tools import chercher_informations_formation, rechercher_contact_secretariat
@@ -78,7 +78,7 @@ Sois factuel, précis et structure tes réponses en JSON valide quand demandé."
     ]
 
     def __init__(self):
-        self.client = anthropic.Anthropic()
+        self.client = ClaudeCliClient()
         self.conversations: list[dict] = []
 
     def _execute_tool(self, tool_name: str, tool_input: dict) -> str:

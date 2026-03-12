@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1F497D">
+<title>PTP — Écoles</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<style>
+:root {
+  --blue: #1F497D; --blue-light: #4472C4; --blue-pale: #EBF3FB;
+  --green: #107c10; --green-bg: #dff0d8;
+  --orange: #c07020; --orange-bg: #fff3cd;
+  --red: #c00; --red-bg: #fce4d6;
+  --grey: #6e6e73; --border: #e5e5ea;
+  --card-bg: #fff; --page-bg: #f2f2f7;
+  --text: #1c1c1e; --text-2: #48484a;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 20px);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --card-bg: #1c1c1e; --page-bg: #000;
+    --text: #fff; --text-2: #aeaeb2;
+    --border: #38383a; --blue-pale: #0a2040;
+    --green-bg: #0a2a0a; --orange-bg: #2a1a00; --red-bg: #2a0000;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--page-bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+.header {
+  background: var(--blue); color: white;
+  padding: calc(var(--safe-top) + 16px) 20px 16px;
+  position: sticky; top: 0; z-index: 50;
+}
+.header-row { display: flex; align-items: center; gap: 12px; }
+.header h1 { font-size: 1.15em; font-weight: 700; flex: 1; }
+
+/* Search bar */
+.search-bar {
+  margin: 12px 16px 0;
+  position: relative;
+}
+.search-bar input {
+  width: 100%; padding: 10px 16px 10px 36px;
+  background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3);
+  border-radius: 12px; color: white; font-size: .9em;
+  outline: none;
+}
+.search-bar input::placeholder { color: rgba(255,255,255,.6); }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: .7; }
+
+/* Status filter chips */
+.chips {
+  display: flex; gap: 8px; padding: 12px 16px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  background: var(--card-bg); border-bottom: 1px solid var(--border);
+}
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  white-space: nowrap; padding: 6px 14px; border-radius: 20px;
+  font-size: .8em; font-weight: 600; cursor: pointer;
+  border: 1.5px solid var(--border); color: var(--text-2);
+  background: var(--page-bg); transition: all .15s;
+}
+.chip.active { background: var(--blue); color: white; border-color: var(--blue); }
+
+/* Scroll */
+.scroll { padding: 0 0 calc(var(--safe-bottom) + 70px); overflow-y: auto; }
+
+/* Loading */
+.loading { text-align: center; padding: 60px 20px; color: var(--grey); }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--border);
+  border-top-color: var(--blue); border-radius: 50%;
+  animation: spin .7s linear infinite; margin: 0 auto 14px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* School card */
+.school-card {
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px;
+  display: flex; gap: 12px; align-items: flex-start;
+  cursor: pointer; transition: background .1s;
+  -webkit-user-select: none;
+}
+.school-card:active { background: var(--blue-pale); }
+.school-avatar {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: var(--blue-pale); color: var(--blue);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3em; flex-shrink: 0;
+}
+.school-info { flex: 1; min-width: 0; }
+.school-name { font-size: .92em; font-weight: 700; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.school-meta { font-size: .78em; color: var(--grey); margin-top: 2px; }
+.school-bottom { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.badge {
+  display: inline-block; padding: 3px 9px; border-radius: 10px;
+  font-size: .72em; font-weight: 700;
+}
+.b-todo { background: #e5e5ea; color: #666; }
+.b-brouillon { background: var(--orange-bg); color: var(--orange); }
+.b-contacte { background: #d0f0ff; color: #006699; }
+.b-attente { background: #e8d4f8; color: #6a0dad; }
+.b-reponse { background: var(--green-bg); color: var(--green); }
+.b-admis { background: #c6efce; color: #276221; }
+.b-refuse { background: var(--red-bg); color: var(--red); }
+.school-score { margin-left: auto; font-size: .8em; font-weight: 700; color: var(--grey); }
+.action-btn {
+  background: var(--green); color: white;
+  padding: 6px 14px; border-radius: 10px;
+  font-size: .78em; font-weight: 700; border: none;
+  cursor: pointer; white-space: nowrap;
+}
+.action-btn.relance { background: var(--blue-light); }
+.action-btn.update { background: #8e8e93; }
+
+/* Empty state */
+.empty { text-align: center; padding: 48px 20px; color: var(--grey); }
+.empty .icon { font-size: 3em; margin-bottom: 12px; }
+
+/* Bottom nav */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--card-bg); border-top: 1px solid var(--border);
+  display: flex; padding: 0 0 var(--safe-bottom);
+  z-index: 100; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 10px 4px 6px; text-decoration: none;
+  color: var(--grey); font-size: .65em; font-weight: 500; gap: 3px;
+}
+.nav-item.active { color: var(--blue); }
+.nav-icon { font-size: 1.6em; }
+
+/* ── Modal (bottom sheet) ─────────────────────────────────────── */
+.sheet-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.4);
+  z-index: 200; display: none; align-items: flex-end;
+}
+.sheet-overlay.open { display: flex; animation: fadeIn .2s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.sheet {
+  background: var(--card-bg); border-radius: 24px 24px 0 0;
+  width: 100%; padding: 0 0 calc(var(--safe-bottom) + 16px);
+  animation: slideUp .3s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.sheet-handle {
+  width: 40px; height: 4px; background: var(--border);
+  border-radius: 2px; margin: 12px auto 4px;
+}
+.sheet-title {
+  padding: 12px 20px 16px; font-size: 1.1em; font-weight: 700;
+  border-bottom: 1px solid var(--border);
+}
+.sheet-school { font-size: .85em; color: var(--grey); font-weight: 400; }
+.sheet-body { padding: 16px 20px; }
+.field-label { font-size: .82em; font-weight: 600; color: var(--grey); margin-bottom: 6px; }
+.status-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; margin-bottom: 16px;
+}
+.status-option {
+  padding: 10px 12px; border-radius: 12px; border: 2px solid var(--border);
+  text-align: center; font-size: .82em; font-weight: 600; cursor: pointer;
+  transition: all .15s;
+}
+.status-option.selected { border-color: var(--blue); background: var(--blue-pale); color: var(--blue); }
+textarea.notes {
+  width: 100%; padding: 12px; border: 1.5px solid var(--border);
+  border-radius: 12px; font-size: .9em; font-family: inherit;
+  background: var(--page-bg); color: var(--text);
+  resize: none; min-height: 80px; outline: none;
+  margin-bottom: 16px;
+}
+textarea.notes:focus { border-color: var(--blue); }
+.save-btn {
+  width: 100%; padding: 14px; background: var(--blue); color: white;
+  border: none; border-radius: 14px; font-size: 1em; font-weight: 700;
+  cursor: pointer;
+}
+.save-btn:active { opacity: .85; }
+.email-link {
+  display: block; padding: 12px 20px; color: var(--blue);
+  font-size: .88em; border-top: 1px solid var(--border);
+  text-decoration: none; font-weight: 500;
+}
+</style>
+</head>
+<body>
+
+<!-- Header + search -->
+<div class="header">
+  <div class="header-row">
+    <h1>🏫 Écoles contactées</h1>
+    <button style="background:rgba(255,255,255,.2);border:none;color:white;padding:7px 14px;border-radius:14px;font-size:.82em;font-weight:600;cursor:pointer" onclick="chargerDonnees()">🔄</button>
+  </div>
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="search" id="search" placeholder="Rechercher un établissement…" oninput="filtrerCartes()">
+  </div>
+</div>
+
+<!-- Chips statut -->
+<div class="chips" id="chips">
+  <div class="chip active" data-filter="all" onclick="setFilter('all', this)">Tous</div>
+  <div class="chip" data-filter="Brouillon prêt" onclick="setFilter('Brouillon prêt', this)">📨 Brouillons</div>
+  <div class="chip" data-filter="Contacté" onclick="setFilter('Contacté', this)">✅ Contactés</div>
+  <div class="chip" data-filter="En attente" onclick="setFilter('En attente', this)">⏳ En attente</div>
+  <div class="chip" data-filter="Réponse reçue" onclick="setFilter('Réponse reçue', this)">📬 Réponses</div>
+  <div class="chip" data-filter="À contacter" onclick="setFilter('À contacter', this)">○ À contacter</div>
+</div>
+
+<!-- Liste -->
+<div class="scroll">
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Chargement…</p>
+  </div>
+  <div id="ecoles-list"></div>
+  <div class="empty" id="empty" style="display:none">
+    <div class="icon">🏫</div>
+    <p>Aucun établissement ne correspond</p>
+  </div>
+</div>
+
+<!-- Bottom nav -->
+<nav class="bottom-nav">
+  <a href="index.html" class="nav-item">
+    <span class="nav-icon">🏠</span>
+    Vue d'ensemble
+  </a>
+  <a href="ecoles.html" class="nav-item active">
+    <span class="nav-icon">🏫</span>
+    Écoles
+  </a>
+  <a href="#" class="nav-item" onclick="chargerDonnees();return false;">
+    <span class="nav-icon">🔄</span>
+    Actualiser
+  </a>
+</nav>
+
+<!-- Bottom sheet modal -->
+<div class="sheet-overlay" id="sheet-overlay" onclick="fermerSheet(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">
+      <div id="sheet-nom">—</div>
+      <div class="sheet-school" id="sheet-ville">—</div>
+    </div>
+    <div class="sheet-body">
+      <div class="field-label">Mettre à jour le statut</div>
+      <div class="status-grid" id="status-grid">
+        <div class="status-option" data-val="Contacté" onclick="selectStatus(this)">✉️ Contacté</div>
+        <div class="status-option" data-val="En attente" onclick="selectStatus(this)">⏳ En attente</div>
+        <div class="status-option" data-val="Réponse reçue" onclick="selectStatus(this)">📬 Réponse reçue</div>
+        <div class="status-option" data-val="Dossier déposé" onclick="selectStatus(this)">📁 Dossier déposé</div>
+        <div class="status-option" data-val="Admis" onclick="selectStatus(this)">🎉 Admis</div>
+        <div class="status-option" data-val="Refusé" onclick="selectStatus(this)">❌ Refusé</div>
+      </div>
+      <div class="field-label">Notes</div>
+      <textarea class="notes" id="sheet-notes" placeholder="Ex : Entretien prévu le 15/04…"></textarea>
+      <button class="save-btn" onclick="sauvegarderStatut()">💾 Enregistrer</button>
+    </div>
+    <a class="email-link" id="sheet-email-link" href="#" target="_blank">✉️ Envoyer un email →</a>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = '__SUPABASE_URL__';
+const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+const SUPABASE_SERVICE_KEY = ''; // Jamais ici — lecture seule depuis le browser
+
+let supabase = null;
+if (SUPABASE_URL && SUPABASE_URL !== '__SUPABASE_URL__') {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+let toutesEcoles = [];
+let filtreActuel = 'all';
+let ecoleActive = null;
+
+// ── Chargement ────────────────────────────────────────────────────────────────
+async function chargerDonnees() {
+  try {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('schools_tracking')
+        .select('*')
+        .order('formation_priorite', { ascending: true })
+        .order('etablissement', { ascending: true });
+      if (error) throw error;
+      toutesEcoles = data;
+      localStorage.setItem('ptp_ecoles_cache', JSON.stringify({ ecoles: data, ts: Date.now() }));
+    } else {
+      const cached = localStorage.getItem('ptp_ecoles_cache');
+      if (cached) {
+        toutesEcoles = JSON.parse(cached).ecoles;
+      }
+    }
+    // Fusionner avec les mises à jour locales
+    const localUpdates = JSON.parse(localStorage.getItem('ptp_local_updates') || '{}');
+    toutesEcoles = toutesEcoles.map(e => ({
+      ...e, ...((localUpdates[e.id] || {}))
+    }));
+  } catch (err) {
+    console.error(err);
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+    filtrerCartes();
+  }
+}
+
+// ── Filtre + Recherche ────────────────────────────────────────────────────────
+function setFilter(val, el) {
+  filtreActuel = val;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  filtrerCartes();
+}
+
+function filtrerCartes() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const filtered = toutesEcoles.filter(e => {
+    const matchSearch = !q ||
+      e.etablissement.toLowerCase().includes(q) ||
+      e.ville.toLowerCase().includes(q) ||
+      (e.formation || '').toLowerCase().includes(q);
+    const matchFilter = filtreActuel === 'all' || e.statut === filtreActuel;
+    return matchSearch && matchFilter;
+  });
+  afficherCartes(filtered);
+}
+
+// ── Affichage ─────────────────────────────────────────────────────────────────
+const BADGE = {
+  'À contacter': 'b-todo',
+  'Brouillon prêt': 'b-brouillon',
+  'Contacté': 'b-contacte',
+  'En attente': 'b-attente',
+  'Réponse reçue': 'b-reponse',
+  'Dossier déposé': 'b-reponse',
+  'Admis': 'b-admis',
+  'Refusé': 'b-refuse',
+};
+
+const ICON = {
+  'À contacter': '○', 'Brouillon prêt': '📨', 'Contacté': '✅',
+  'En attente': '⏳', 'Réponse reçue': '📬', 'Dossier déposé': '📁',
+  'Admis': '🎉', 'Refusé': '❌',
+};
+
+function actionLabel(statut) {
+  if (statut === 'Brouillon prêt') return ['✅ Confirmer envoi', 'action'];
+  if (statut === 'Contacté') return ['⏳ En attente', 'relance'];
+  if (statut === 'En attente') return ['📬 Réponse reçue', 'relance'];
+  return ['✏️ Mettre à jour', 'update'];
+}
+
+function afficherCartes(ecoles) {
+  const list = document.getElementById('ecoles-list');
+  const empty = document.getElementById('empty');
+
+  if (ecoles.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = ecoles.map(e => {
+    const statut = e.statut || 'À contacter';
+    const bClass = BADGE[statut] || 'b-todo';
+    const icon = ICON[statut] || '○';
+    const [btnLabel, btnClass] = actionLabel(statut);
+    const score = e.score_adequation ? `${e.score_adequation}/10` : '';
+
+    return `<div class="school-card" onclick="ouvrirSheet('${encodeURIComponent(JSON.stringify(e))}')">
+      <div class="school-avatar">${icon}</div>
+      <div class="school-info">
+        <div class="school-name">${e.etablissement}</div>
+        <div class="school-meta">${e.ville} · Prio ${e.formation_priorite || '?'}</div>
+        <div class="school-bottom">
+          <span class="badge ${bClass}">${statut}</span>
+          ${score ? `<span class="school-score">⭐ ${score}</span>` : ''}
+          <button class="action-btn ${btnClass}" onclick="event.stopPropagation();actionRapide('${e.id}','${statut}')">${btnLabel}</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Action rapide ─────────────────────────────────────────────────────────────
+function actionRapide(id, statutActuel) {
+  const suivant = {
+    'Brouillon prêt': 'Contacté',
+    'Contacté': 'En attente',
+    'En attente': 'Réponse reçue',
+  };
+  const newStatut = suivant[statutActuel];
+  if (newStatut) {
+    sauvegarderLocalement(id, newStatut, '');
+    const ecole = toutesEcoles.find(e => e.id === id);
+    if (ecole) ecole.statut = newStatut;
+    filtrerCartes();
+  }
+}
+
+// ── Sheet modal ───────────────────────────────────────────────────────────────
+function ouvrirSheet(encoded) {
+  const e = JSON.parse(decodeURIComponent(encoded));
+  ecoleActive = e;
+  document.getElementById('sheet-nom').textContent = e.etablissement;
+  document.getElementById('sheet-ville').textContent = `${e.ville} · ${(e.formation || '').substring(0, 50)}`;
+  document.getElementById('sheet-notes').value = e.notes || '';
+
+  // Sélectionner statut actuel
+  document.querySelectorAll('.status-option').forEach(opt => {
+    opt.classList.toggle('selected', opt.dataset.val === e.statut);
+  });
+
+  // Lien email
+  const email = e.email_contact || '';
+  const emailLink = document.getElementById('sheet-email-link');
+  if (email) {
+    emailLink.href = `mailto:${email}?subject=Candidature%20LP%20Automatismes%20—%20PTP`;
+    emailLink.style.display = 'block';
+  } else {
+    emailLink.style.display = 'none';
+  }
+
+  document.getElementById('sheet-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function fermerSheet(e) {
+  if (e.target === document.getElementById('sheet-overlay')) {
+    document.getElementById('sheet-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+
+function selectStatus(el) {
+  document.querySelectorAll('.status-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function sauvegarderStatut() {
+  if (!ecoleActive) return;
+  const selected = document.querySelector('.status-option.selected');
+  const statut = selected ? selected.dataset.val : ecoleActive.statut;
+  const notes = document.getElementById('sheet-notes').value;
+
+  sauvegarderLocalement(ecoleActive.id, statut, notes);
+
+  // Mettre à jour dans la liste locale
+  const idx = toutesEcoles.findIndex(e => e.id === ecoleActive.id);
+  if (idx !== -1) {
+    toutesEcoles[idx].statut = statut;
+    toutesEcoles[idx].notes = notes;
+  }
+
+  document.getElementById('sheet-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  filtrerCartes();
+
+  // Feedback visuel
+  afficherToast('✅ Statut mis à jour');
+}
+
+function sauvegarderLocalement(id, statut, notes) {
+  const updates = JSON.parse(localStorage.getItem('ptp_local_updates') || '{}');
+  updates[id] = {
+    statut,
+    notes,
+    date_derniere_action: new Date().toISOString(),
+    date_derniere_action_fr: new Date().toLocaleDateString('fr-FR'),
+  };
+  localStorage.setItem('ptp_local_updates', JSON.stringify(updates));
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function afficherToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = `
+    position:fixed;bottom:calc(var(--safe-bottom, 20px) + 80px);left:50%;
+    transform:translateX(-50%);background:#333;color:#fff;
+    padding:10px 20px;border-radius:24px;font-size:.88em;font-weight:600;
+    z-index:300;animation:fadeIn .2s ease;white-space:nowrap;
+  `;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// Real-time
+if (supabase) {
+  supabase.channel('ecoles').on('postgres_changes',
+    { event: '*', schema: 'public', table: 'schools_tracking' },
+    () => chargerDonnees()
+  ).subscribe();
+}
+
+chargerDonnees();
+</script>
+</body>
+</html>
