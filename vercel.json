@@ -1,5 +1,4 @@
 {
-  "buildCommand": "python scripts/build_pwa.py",
   "outputDirectory": "pwa",
   "framework": null,
   "rewrites": [
@@ -20,10 +19,5 @@
         { "key": "X-Frame-Options", "value": "DENY" }
       ]
     }
-  ],
-  "env": {
-    "SUPABASE_URL": "@supabase_url",
-    "SUPABASE_ANON_KEY": "@supabase_anon_key",
-    "ONESIGNAL_APP_ID": "@onesignal_app_id"
-  }
+  ]
 }
