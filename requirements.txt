@@ -10,5 +10,8 @@ lxml>=5.0.0
 # Configuration
 python-dotenv>=1.0.0
 
+# Supabase (sync PWA)
+supabase>=2.0.0
+
 # Génération icônes PWA (optionnel)
 # pip install Pillow
