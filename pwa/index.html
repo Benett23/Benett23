@@ -409,20 +409,20 @@ html, body { height: 100%; background: var(--page-bg); color: var(--text); font-
 
 <script>
 // ── Config Supabase (valeurs remplacées au déploiement) ──────────────────────
-const SUPABASE_URL = '__SUPABASE_URL__';
-const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
-const ONESIGNAL_APP_ID = '__ONESIGNAL_APP_ID__';
+const SUPABASE_URL = '';
+const SUPABASE_ANON_KEY = '';
+const ONESIGNAL_APP_ID = '';
 
 let supabase = null;
 
-if (SUPABASE_URL && SUPABASE_URL !== '__SUPABASE_URL__') {
+if (SUPABASE_URL && SUPABASE_URL !== '') {
   supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 // ── OneSignal init ────────────────────────────────────────────────────────────
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function(OneSignal) {
-  if (!ONESIGNAL_APP_ID || ONESIGNAL_APP_ID === '__ONESIGNAL_APP_ID__') return;
+  if (!ONESIGNAL_APP_ID || ONESIGNAL_APP_ID === '') return;
   await OneSignal.init({
     appId: ONESIGNAL_APP_ID,
     safari_web_id: 'web.onesignal.auto.' + ONESIGNAL_APP_ID,

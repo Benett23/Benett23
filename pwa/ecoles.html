@@ -280,12 +280,12 @@ textarea.notes:focus { border-color: var(--blue); }
 </div>
 
 <script>
-const SUPABASE_URL = '__SUPABASE_URL__';
-const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+const SUPABASE_URL = '';
+const SUPABASE_ANON_KEY = '';
 const SUPABASE_SERVICE_KEY = ''; // Jamais ici — lecture seule depuis le browser
 
 let supabase = null;
-if (SUPABASE_URL && SUPABASE_URL !== '__SUPABASE_URL__') {
+if (SUPABASE_URL && SUPABASE_URL !== '') {
   supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
