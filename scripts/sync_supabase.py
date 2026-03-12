@@ -8,11 +8,16 @@ import json
 import os
 import sys
 from pathlib import Path
-from dotenv import load_dotenv
 
-# Charger .env depuis la racine du projet
+# Charger .env manuellement (sans dépendance externe)
 ROOT = Path(__file__).parent.parent
-load_dotenv(ROOT / ".env")
+env_file = ROOT / ".env"
+if env_file.exists():
+    for line in env_file.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip())
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
@@ -23,9 +28,9 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     sys.exit(1)
 
 try:
-    from supabase import create_client
+    import requests
 except ImportError:
-    print("❌ Paquet 'supabase' manquant. Lancez : pip install supabase>=2.0.0")
+    print("❌ Paquet 'requests' manquant. Lancez : pip install requests")
     sys.exit(1)
 
 def main():
@@ -38,15 +43,25 @@ def main():
 
     print(f"📤 {len(ecoles)} établissements à synchroniser…")
 
-    client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates",
+    }
 
-    # Upsert (insert ou update si l'id existe déjà)
-    result = client.table("schools_tracking").upsert(ecoles).execute()
+    r = requests.post(
+        f"{SUPABASE_URL}/rest/v1/schools_tracking",
+        headers=headers,
+        json=ecoles,
+        timeout=30,
+    )
 
-    if hasattr(result, "data") and result.data is not None:
-        print(f"✅ {len(result.data)} enregistrements synchronisés avec succès.")
+    if r.status_code in (200, 201):
+        print(f"✅ Synchronisation réussie ({r.status_code})")
     else:
-        print("⚠️  Réponse inattendue de Supabase :", result)
+        print(f"❌ Erreur {r.status_code} : {r.text[:300]}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
