@@ -373,10 +373,19 @@ const ETAPES = [
   {num:8, action:'Début de la formation',                 organisme:'IUT sélectionné',         delai:'Sept. 2026',     statut:'À faire',     notes:'Rentrée 2026-2027'},
 ];
 
-const STATUT_COLOR = {
-  '✅ Fait':     '#dff0d8', '🔄 En cours': '#fff3cd',
-  'À faire':    '#f2f2f7',
-};
+// Couleurs calculées dynamiquement selon le mode (évite cellules blanches en dark)
+function getStatutColors() {
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return dark ? {
+    '✅ Fait':     'rgba(34,197,94,.14)',
+    '🔄 En cours': 'rgba(251,191,36,.14)',
+    'À faire':    'rgba(255,255,255,.04)',
+  } : {
+    '✅ Fait':     '#dff0d8',
+    '🔄 En cours': '#fff3cd',
+    'À faire':    '#f2f2f7',
+  };
+}
 
 // ── Onglets ───────────────────────────────────────────────────────────────────
 function showTab(id) {
@@ -461,7 +470,8 @@ function telecharger(k, nom) {
 
 function imprimerDoc(k) {
   const contenu = document.getElementById('editor-' + k).innerHTML;
-  const w = window.open('','_blank');
+  const w = window.open('', '_blank');
+  if (!w) { toast('⚠️ Autorisez les popups pour imprimer'); return; }
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
 <style>body{font-family:Arial,sans-serif;max-width:750px;margin:40px auto;font-size:11pt;line-height:1.7}
 p{margin-bottom:10px}ul{margin:10px 0 10px 24px}</style></head><body>${contenu}</body></html>`);
@@ -471,22 +481,30 @@ p{margin-bottom:10px}ul{margin:10px 0 10px 24px}</style></head><body>${contenu}<
 
 // ── Planning ──────────────────────────────────────────────────────────────────
 function initPlanning() {
-  const t = document.getElementById('planning-table');
+  const t    = document.getElementById('planning-table');
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const SC   = getStatutColors();
+  const borderColor  = dark ? '#30363d' : '#e5e5ea';
+  const numColor     = dark ? '#60a5fa' : '#1F497D';
+  const notesColor   = dark ? '#9aabb8' : '#6e6e73';
+  const defBg        = dark ? 'transparent' : '#fff';
+
   t.innerHTML = `
-    <thead><tr style="background:#1F497D;color:#fff">
-      <th style="padding:8px 10px;text-align:left;font-size:.82em">#</th>
-      <th style="padding:8px 10px;text-align:left;font-size:.82em">Action</th>
-      <th style="padding:8px 10px;text-align:left;font-size:.82em">Organisme</th>
-      <th style="padding:8px 10px;text-align:left;font-size:.82em">Délai</th>
-      <th style="padding:8px 10px;text-align:left;font-size:.82em">Statut</th>
+    <thead><tr style="background:#1e3a8a">
+      <th style="padding:9px 10px;text-align:left;font-size:.82em;color:#fff">#</th>
+      <th style="padding:9px 10px;text-align:left;font-size:.82em;color:#fff">Action</th>
+      <th style="padding:9px 10px;text-align:left;font-size:.82em;color:#fff">Organisme</th>
+      <th style="padding:9px 10px;text-align:left;font-size:.82em;color:#fff">Délai</th>
+      <th style="padding:9px 10px;text-align:left;font-size:.82em;color:#fff">Statut</th>
     </tr></thead>
     <tbody>
-      ${ETAPES.map(e => `<tr style="background:${STATUT_COLOR[e.statut]||'#fff'};border-bottom:1px solid #e5e5ea">
-        <td style="padding:8px 10px;font-weight:700;color:#1F497D">${e.num}</td>
-        <td style="padding:8px 10px;font-weight:600">${e.action}<br><span style="font-size:.78em;color:#6e6e73">${e.notes}</span></td>
-        <td style="padding:8px 10px;font-size:.85em">${e.organisme}</td>
-        <td style="padding:8px 10px;font-size:.85em;white-space:nowrap">${e.delai}</td>
-        <td style="padding:8px 10px;font-size:.85em;white-space:nowrap">${e.statut}</td>
+      ${ETAPES.map(e => `<tr style="background:${SC[e.statut]||defBg};border-bottom:1px solid ${borderColor}">
+        <td style="padding:9px 10px;font-weight:700;color:${numColor}">${e.num}</td>
+        <td style="padding:9px 10px;font-weight:600;color:var(--text)">${e.action}<br>
+            <span style="font-size:.78em;color:${notesColor}">${e.notes}</span></td>
+        <td style="padding:9px 10px;font-size:.85em;color:var(--text2)">${e.organisme}</td>
+        <td style="padding:9px 10px;font-size:.85em;white-space:nowrap;color:var(--text2)">${e.delai}</td>
+        <td style="padding:9px 10px;font-size:.85em;white-space:nowrap;color:var(--text)">${e.statut}</td>
       </tr>`).join('')}
     </tbody>`;
 
@@ -547,11 +565,13 @@ async function uploadFichier(e) {
 
   // Fallback base64
   if (!meta.url) {
-    meta.b64 = await new Promise(r => {
+    meta.b64 = await new Promise((resolve, reject) => {
       const fr = new FileReader();
-      fr.onload = ev => r(ev.target.result);
+      fr.onload  = ev => resolve(ev.target.result);
+      fr.onerror = ()  => reject(new Error('Lecture impossible'));
       fr.readAsDataURL(f);
-    });
+    }).catch(() => null);
+    if (!meta.b64) { toast('⚠️ Impossible de lire le fichier'); return; }
   }
 
   const liste = getMeta();
@@ -565,7 +585,7 @@ function afficherFichiers() {
   const liste  = getMeta();
   const el     = document.getElementById('file-list');
   if (liste.length === 0) {
-    el.innerHTML = '<p style="color:var(--grey);font-size:.85em;text-align:center;padding:16px">Aucun fichier déposé</p>';
+    el.innerHTML = '<p style="color:var(--muted);font-size:.85em;text-align:center;padding:16px">Aucun fichier déposé</p>';
     return;
   }
   const ICON = {
@@ -585,7 +605,7 @@ function afficherFichiers() {
         <div class="file-meta">${kb} · ${date} ${f.url ? '· ☁️ cloud' : '· 💾 local'}</div>
       </div>
       <a class="file-btn file-dl" href="${href}" download="${f.nom}" ${f.b64 ? '' : 'target="_blank"'}>⬇️</a>
-      <button class="file-btn file-del" onclick="supprimerFichier('${f.id}')">🗑️</button>
+      <button class="file-btn file-del" data-id="${f.id}" onclick="supprimerFichier(this.dataset.id)">🗑️</button>
     </div>`;
   }).join('');
 }

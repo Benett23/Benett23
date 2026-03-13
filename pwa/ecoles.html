@@ -332,7 +332,7 @@ async function chargerDonnees() {
         };
       });
       localStorage.setItem('ptp_ecoles_cache', JSON.stringify({ecoles, ts: Date.now()}));
-    } else { throw 0; }
+    } else { throw new Error('Données Supabase vides ou erreur'); }
   } catch {
     const c = localStorage.getItem('ptp_ecoles_cache');
     ecoles = c ? JSON.parse(c).ecoles : DATA_LOCAL;
@@ -531,7 +531,7 @@ function ouvrirSheet(id) {
     document.getElementById('sh-mail-content').innerHTML = `
       <div class="mail-addr">
         <span style="flex:1;word-break:break-all">${esc(e.email_contact)}</span>
-        <button class="mail-copy" onclick="copierMail('${esc(e.email_contact)}')">Copier</button>
+        <button class="mail-copy" data-email="${esc(e.email_contact)}" onclick="copierMail(this.dataset.email)">Copier</button>
       </div>
       <div class="mail-template">${esc(corps)}</div>
       <a class="mail-send-btn" href="${esc(mailtoHref)}">✉️ Ouvrir dans l'application mail</a>

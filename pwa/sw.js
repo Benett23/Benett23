@@ -3,13 +3,15 @@
  * Cache offline, background sync, push notifications
  */
 
-const CACHE_NAME = 'ptp-v1';
+const CACHE_NAME = 'ptp-v2';
 const OFFLINE_PAGE = '/offline.html';
 
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/ecoles.html',
+  '/documents.html',
+  '/ptp.css',
   '/offline.html',
   '/manifest.json',
   '/icons/icon-192.png',

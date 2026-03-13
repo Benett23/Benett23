@@ -749,8 +749,8 @@ function afficherDocs() {
         <div style="font-size:.72em;color:var(--grey)">${CAT_LABELS[f.cat] || f.cat}</div>
       </div>
       <div class="doc-actions">
-        <button class="btn-dl" onclick="ouvrirDoc('${f.id}')">Ouvrir</button>
-        <button class="btn-del" onclick="supprimerDoc('${f.id}')">✕</button>
+        <button class="btn-dl" data-id="${f.id}" onclick="ouvrirDoc(this.dataset.id)">Ouvrir</button>
+        <button class="btn-del" data-id="${f.id}" onclick="supprimerDoc(this.dataset.id)">✕</button>
       </div>
     </div>
   `).join('');
@@ -809,7 +809,16 @@ async function envoyerFichier(fichier, cat) {
   // Fallback base64 locale si pas d'URL cloud
   if (!meta.url) {
     const reader = new FileReader();
-    meta.b64 = await new Promise(res => { reader.onload = e => res(e.target.result); reader.readAsDataURL(fichier); });
+    meta.b64 = await new Promise((resolve, reject) => {
+      reader.onload  = e => resolve(e.target.result);
+      reader.onerror = ()  => reject(new Error('Lecture impossible'));
+      reader.readAsDataURL(fichier);
+    }).catch(() => null);
+    if (!meta.b64) {
+      prog.style.display = 'none';
+      toast('⚠️ Impossible de lire le fichier');
+      return;
+    }
   }
 
   const liste = docsMeta();
