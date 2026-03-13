@@ -28,8 +28,11 @@
   --grey:#64748b;--card-bg:var(--card);--page-bg:var(--page);--text-2:var(--text2);
 }
 @media(prefers-color-scheme:dark){:root{
-  --blue-pale:#1e3358;--green-bg:rgba(34,197,94,.14);
-  --orange-bg:rgba(251,191,36,.12);--red-bg:rgba(248,113,113,.12);
+  /* En dark mode les liens var(--blue) doivent être clairs */
+  --blue:#60a5fa;--blue-light:#93c5fd;--blue-pale:#1e3358;
+  --green:#4ade80;--green-bg:rgba(34,197,94,.14);
+  --orange:#fcd34d;--orange-bg:rgba(251,191,36,.12);
+  --red:#f87171;--red-bg:rgba(248,113,113,.12);
   --grey:#9aabb8;
 }}
 
@@ -258,6 +261,15 @@
 .btn-send{flex:2;border:none;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;box-shadow:var(--sh-blue)}
 .btn-send:active{transform:scale(.97)}
 
+/* ── Lien "voir les écoles" ──────────────────────────────────────── */
+.voir-ecoles-link{
+  display:flex;align-items:center;justify-content:center;
+  padding:13px;font-size:.9em;font-weight:700;
+  color:#1d4ed8;text-decoration:none;border-top:1px solid var(--border)
+}
+.voir-ecoles-link:active{background:var(--card2)}
+@media(prefers-color-scheme:dark){.voir-ecoles-link{color:#60a5fa}}
+
 /* ── Notification banner ─────────────────────────────────────────── */
 .notif-banner{
   background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;
@@ -329,7 +341,7 @@
       <div class="progress-wrap">
         <div class="progress-bar" id="prog-bar" style="width:0%"></div>
       </div>
-      <a href="ecoles.html" style="display:flex;align-items:center;justify-content:center;padding:13px;font-size:.88em;font-weight:600;color:var(--blue);text-decoration:none">
+      <a href="ecoles.html" class="voir-ecoles-link">
         Voir le tableau des écoles →
       </a>
     </div>
@@ -341,7 +353,7 @@
         <li class="check-item">
           <span class="check-icon">⏳</span>
           <div class="check-text">
-            <div class="check-title" style="color:var(--grey)">En attente du premier run Python</div>
+            <div class="check-title" style="color:var(--muted)">En attente du premier run Python</div>
           </div>
         </li>
       </ul>
