@@ -284,9 +284,9 @@ const SUPABASE_URL = 'https://bgfzucxocpwjjvimxsbk.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnZnp1Y3hvY3B3amp2aW14c2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNDE3MjEsImV4cCI6MjA4ODkxNzcyMX0.bCPVzXc0QJKvjcYqWp4hdAbX6CigYa5Gc_la5QMSG2M';
 const SUPABASE_SERVICE_KEY = ''; // Jamais ici — lecture seule depuis le browser
 
-let supabase = null;
+let supabaseClient = null;
 if (SUPABASE_URL && SUPABASE_URL !== '') {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 let toutesEcoles = [];
@@ -296,8 +296,8 @@ let ecoleActive = null;
 // ── Chargement ────────────────────────────────────────────────────────────────
 async function chargerDonnees() {
   try {
-    if (supabase) {
-      const { data, error } = await supabase
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient
         .from('schools_tracking')
         .select('*')
         .order('formation_priorite', { ascending: true })
@@ -512,8 +512,8 @@ if ('serviceWorker' in navigator) {
 }
 
 // Real-time
-if (supabase) {
-  supabase.channel('ecoles').on('postgres_changes',
+if (supabaseClient) {
+  supabaseClient.channel('ecoles').on('postgres_changes',
     { event: '*', schema: 'public', table: 'schools_tracking' },
     () => chargerDonnees()
   ).subscribe();
