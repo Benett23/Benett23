@@ -4,11 +4,13 @@ Actualités IA quotidiennes - Envoi par email chaque matin.
 Sources: flux RSS de sites spécialisés en IA.
 """
 
+import html
 import os
 import smtplib
 import ssl
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -48,8 +50,6 @@ def fetch_rss(feed_info: dict) -> list[dict]:
         # Support RSS 2.0 et Atom
         items = root.findall(".//item") or root.findall(".//atom:entry", namespace)
 
-        yesterday = datetime.now(timezone.utc) - timedelta(hours=36)
-
         for item in items:
             title = (item.findtext("title") or item.findtext("atom:title", namespaces=namespace) or "").strip()
             link = (item.findtext("link") or item.findtext("atom:link", namespaces=namespace) or "").strip()
@@ -67,33 +67,34 @@ def fetch_rss(feed_info: dict) -> list[dict]:
             articles.append({
                 "title": title,
                 "link": link,
-                "description": description[:300] + ("..." if len(description) > 300 else ""),
+                "description": description[:300] + "..." if len(description) > 300 else description,
                 "source": feed_info["source"],
             })
 
-    except Exception as e:
+    except (requests.RequestException, ET.ParseError) as e:
         print(f"[WARN] Impossible de récupérer {feed_info['source']}: {e}")
 
     return articles
 
 
-def build_html(articles: list[dict]) -> str:
+def build_html(articles: list[dict], now: datetime) -> str:
     """Génère le corps HTML de l'email."""
-    date_str = datetime.now().strftime("%A %d %B %Y").capitalize()
+    date_str = now.strftime("%A %d %B %Y").capitalize()
 
-    items_html = ""
-    for art in articles:
-        items_html += f"""
+    if articles:
+        items_html = "".join(
+            f"""
         <div style="margin-bottom:24px; border-left:4px solid #4A90E2; padding-left:12px;">
-            <a href="{art['link']}" style="font-size:16px; font-weight:bold; color:#1a1a1a; text-decoration:none;">
-                {art['title']}
+            <a href="{html.escape(art['link'])}" style="font-size:16px; font-weight:bold; color:#1a1a1a; text-decoration:none;">
+                {html.escape(art['title'])}
             </a>
-            <p style="font-size:12px; color:#888; margin:4px 0;">Source : {art['source']}</p>
-            <p style="font-size:14px; color:#444; margin:6px 0;">{art['description']}</p>
+            <p style="font-size:12px; color:#888; margin:4px 0;">Source : {html.escape(art['source'])}</p>
+            <p style="font-size:14px; color:#444; margin:6px 0;">{html.escape(art['description'])}</p>
         </div>
         """
-
-    if not items_html:
+            for art in articles
+        )
+    else:
         items_html = "<p>Aucun article IA trouvé aujourd'hui. Vérifiez les flux RSS configurés.</p>"
 
     return f"""
@@ -107,7 +108,7 @@ def build_html(articles: list[dict]) -> str:
             {items_html}
         </div>
         <p style="text-align:center; color:#aaa; font-size:12px; margin-top:16px;">
-            Envoyé automatiquement par ai_news.py · {datetime.now().strftime("%H:%M")}
+            Envoyé automatiquement par ai_news.py · {now.strftime("%H:%M")}
         </p>
     </body>
     </html>
@@ -141,29 +142,25 @@ def send_email(subject: str, html_body: str) -> None:
 
 
 def main():
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] Récupération des actualités IA...")
+    now = datetime.now()
+    print(f"[{now.strftime('%Y-%m-%d %H:%M')}] Récupération des actualités IA...")
 
     all_articles = []
-    for feed in RSS_FEEDS:
-        articles = fetch_rss(feed)
-        all_articles.extend(articles)
-        print(f"  {feed['source']}: {len(articles)} article(s) IA trouvé(s)")
+    with ThreadPoolExecutor(max_workers=len(RSS_FEEDS)) as executor:
+        futures = {executor.submit(fetch_rss, feed): feed for feed in RSS_FEEDS}
+        for future in as_completed(futures):
+            feed = futures[future]
+            articles = future.result()
+            all_articles.extend(articles)
+            print(f"  {feed['source']}: {len(articles)} article(s) IA trouvé(s)")
 
-    # Déduplique par titre
-    seen = set()
-    unique_articles = []
-    for art in all_articles:
-        if art["title"] not in seen:
-            seen.add(art["title"])
-            unique_articles.append(art)
+    # Déduplique par titre en préservant l'ordre de découverte
+    unique_articles = list({art["title"]: art for art in all_articles}.values())[:MAX_ARTICLES]
 
-    unique_articles = unique_articles[:MAX_ARTICLES]
+    subject = f"Actualités IA du {now.strftime('%d/%m/%Y')} ({len(unique_articles)} articles)"
+    html_body = build_html(unique_articles, now)
 
-    date_str = datetime.now().strftime("%d/%m/%Y")
-    subject = f"Actualités IA du {date_str} ({len(unique_articles)} articles)"
-    html = build_html(unique_articles)
-
-    send_email(subject, html)
+    send_email(subject, html_body)
 
 
 if __name__ == "__main__":
