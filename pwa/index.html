@@ -203,6 +203,43 @@ html, body { height: 100%; background: var(--page-bg); color: var(--text); font-
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 .refreshing { animation: pulse .8s ease infinite; }
 
+/* ── Upload section ──────────────────────────────────────────── */
+.upload-zone {
+  margin: 12px 16px;
+  border: 2px dashed var(--blue-light);
+  border-radius: 14px;
+  padding: 22px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: background .15s;
+  color: var(--grey);
+  font-size: .88em;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  background: var(--blue-pale);
+  border-color: var(--blue);
+}
+.upload-zone .uz-icon { font-size: 2em; display: block; margin-bottom: 6px; }
+.upload-zone strong { color: var(--blue); }
+.upload-zone input { display: none; }
+.doc-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+}
+.doc-card:last-child { border-bottom: none; }
+.doc-file-icon { font-size: 1.8em; flex-shrink: 0; }
+.doc-info { flex: 1; min-width: 0; }
+.doc-name { font-size: .88em; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-meta { font-size: .74em; color: var(--grey); margin-top: 2px; }
+.doc-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.btn-dl, .btn-del {
+  border: none; border-radius: 10px; padding: 6px 10px;
+  font-size: .78em; font-weight: 600; cursor: pointer;
+}
+.btn-dl { background: var(--blue-pale); color: var(--blue); }
+.btn-del { background: var(--red-bg); color: var(--red); }
+.upload-empty { padding: 18px 16px; text-align: center; color: var(--grey); font-size: .84em; }
+
 /* ── Notification banner ─────────────────────────────────────── */
 .notif-banner {
   background: var(--blue); color: white;
@@ -290,6 +327,22 @@ html, body { height: 100%; background: var(--page-bg); color: var(--text); font-
           </div>
         </li>
       </ul>
+    </div>
+
+    <!-- Upload documents -->
+    <div class="section">
+      <div class="section-header">
+        📎 Mes documents
+        <span id="docs-count"></span>
+      </div>
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+        <span class="uz-icon">⬆️</span>
+        <strong>Ajouter un document</strong><br>
+        CV, lettre, diplôme… (PDF, DOCX, JPG)<br>
+        <small>Glisser-déposer ou cliquer</small>
+        <input type="file" id="file-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple>
+      </div>
+      <div id="docs-uploaded"></div>
     </div>
 
     <!-- Étapes PTP -->
@@ -579,9 +632,143 @@ function abonnerTempsReel() {
     .subscribe();
 }
 
+// ── IndexedDB pour documents ──────────────────────────────────────────────────
+const DB_NAME = 'ptp_docs', DB_VER = 1, STORE = 'fichiers';
+let db = null;
+
+function ouvrirDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function sauvegarderFichier(nom, type, taille, data) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).add({ nom, type, taille, date: Date.now(), data });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+function listerFichiers() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function supprimerFichier(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+function iconeDoc(type) {
+  if (type.includes('pdf')) return '📕';
+  if (type.includes('word') || type.includes('docx') || type.includes('doc')) return '📘';
+  if (type.includes('image')) return '🖼️';
+  return '📄';
+}
+
+function formatTaille(bytes) {
+  if (bytes < 1024) return bytes + ' o';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' Ko';
+  return (bytes / 1024 / 1024).toFixed(1) + ' Mo';
+}
+
+async function afficherDocs() {
+  const liste = await listerFichiers();
+  const container = document.getElementById('docs-uploaded');
+  const counter = document.getElementById('docs-count');
+  counter.textContent = liste.length > 0 ? `${liste.length} fichier${liste.length > 1 ? 's' : ''}` : '';
+
+  if (liste.length === 0) {
+    container.innerHTML = '<div class="upload-empty">Aucun document ajouté</div>';
+    return;
+  }
+
+  container.innerHTML = liste.map(f => `
+    <div class="doc-card" id="doc-${f.id}">
+      <span class="doc-file-icon">${iconeDoc(f.type)}</span>
+      <div class="doc-info">
+        <div class="doc-name" title="${f.nom}">${f.nom}</div>
+        <div class="doc-meta">${formatTaille(f.taille)} · ${new Date(f.date).toLocaleDateString('fr-FR')}</div>
+      </div>
+      <div class="doc-actions">
+        <button class="btn-dl" onclick="telechargerDoc(${f.id})">⬇ Ouvrir</button>
+        <button class="btn-del" onclick="supprimerDoc(${f.id})">✕</button>
+      </div>
+    </div>
+  `).join('');
+
+  // Marquer CV comme fait si un fichier avec "cv" dans le nom est présent
+  const aCV = liste.some(f => f.nom.toLowerCase().includes('cv'));
+  if (aCV) {
+    const saved = JSON.parse(localStorage.getItem('ptp_docs_generes') || '[]');
+    if (!saved.includes('cv')) {
+      saved.push('cv');
+      localStorage.setItem('ptp_docs_generes', JSON.stringify(saved));
+    }
+  }
+}
+
+async function telechargerDoc(id) {
+  const tx = db.transaction(STORE, 'readonly');
+  const req = tx.objectStore(STORE).get(id);
+  req.onsuccess = () => {
+    const f = req.result;
+    const blob = new Blob([f.data], { type: f.type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = f.nom; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+}
+
+async function supprimerDoc(id) {
+  await supprimerFichier(id);
+  await afficherDocs();
+}
+
+async function traiterFichiers(fichiers) {
+  for (const fichier of fichiers) {
+    const buffer = await fichier.arrayBuffer();
+    await sauvegarderFichier(fichier.name, fichier.type, fichier.size, buffer);
+  }
+  await afficherDocs();
+}
+
+// ── Init upload zone ───────────────────────────────────────────────────────────
+async function initUpload() {
+  await ouvrirDB();
+  await afficherDocs();
+
+  const input = document.getElementById('file-input');
+  input.addEventListener('change', e => traiterFichiers([...e.target.files]));
+
+  const zone = document.getElementById('upload-zone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    traiterFichiers([...e.dataTransfer.files]);
+  });
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 chargerDonnees();
 abonnerTempsReel();
+initUpload();
 </script>
 </body>
 </html>
