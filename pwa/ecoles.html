@@ -6,518 +6,518 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1F497D">
-<title>PTP — Écoles</title>
-
+<title>PTP — Établissements</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-
 <style>
 :root {
-  --blue: #1F497D; --blue-light: #4472C4; --blue-pale: #EBF3FB;
-  --green: #107c10; --green-bg: #dff0d8;
-  --orange: #c07020; --orange-bg: #fff3cd;
-  --red: #c00; --red-bg: #fce4d6;
-  --grey: #6e6e73; --border: #e5e5ea;
-  --card-bg: #fff; --page-bg: #f2f2f7;
-  --text: #1c1c1e; --text-2: #48484a;
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 20px);
+  --blue:#1F497D; --blue-l:#4472C4; --blue-pale:#EBF3FB;
+  --green:#107c10; --green-bg:#dff0d8;
+  --orange:#c07020; --orange-bg:#fff3cd;
+  --red:#c00; --red-bg:#fce4d6;
+  --purple:#6a0dad; --purple-bg:#f0e6ff;
+  --grey:#6e6e73; --border:#e5e5ea;
+  --card:#fff; --page:#f2f2f7; --text:#1c1c1e; --text2:#48484a;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,20px);
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --card-bg: #1c1c1e; --page-bg: #000;
-    --text: #fff; --text-2: #aeaeb2;
-    --border: #38383a; --blue-pale: #0a2040;
-    --green-bg: #0a2a0a; --orange-bg: #2a1a00; --red-bg: #2a0000;
-  }
-}
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; background: var(--page-bg); color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+@media(prefers-color-scheme:dark){:root{
+  --card:#1c1c1e; --page:#000; --text:#fff; --text2:#aeaeb2;
+  --border:#38383a; --blue-pale:#0a2040;
+  --green-bg:#0a2a0a; --orange-bg:#2a1800; --red-bg:#2a0000; --purple-bg:#1a0a2a;
+}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--page);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px}
 
-.header {
-  background: var(--blue); color: white;
-  padding: calc(var(--safe-top) + 16px) 20px 16px;
-  position: sticky; top: 0; z-index: 50;
-}
-.header-row { display: flex; align-items: center; gap: 12px; }
-.header h1 { font-size: 1.15em; font-weight: 700; flex: 1; }
+/* ── Header ── */
+.header{background:var(--blue);color:#fff;padding:calc(var(--safe-top)+14px) 16px 0;
+  position:sticky;top:0;z-index:50}
+.header-row{display:flex;align-items:center;gap:10px;padding-bottom:12px}
+.header h1{font-size:1.1em;font-weight:700;flex:1}
+.sync-btn{background:rgba(255,255,255,.2);border:none;color:#fff;
+  padding:7px 13px;border-radius:12px;font-size:.82em;font-weight:600;cursor:pointer}
 
-/* Search bar */
-.search-bar {
-  margin: 12px 16px 0;
-  position: relative;
-}
-.search-bar input {
-  width: 100%; padding: 10px 16px 10px 36px;
-  background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3);
-  border-radius: 12px; color: white; font-size: .9em;
-  outline: none;
-}
-.search-bar input::placeholder { color: rgba(255,255,255,.6); }
-.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: .7; }
+/* ── Search + filter bar ── */
+.toolbar{background:var(--card);border-bottom:1px solid var(--border);
+  padding:10px 16px;display:flex;gap:8px;align-items:center;position:sticky;top:62px;z-index:40}
+.search-wrap{flex:1;position:relative}
+.search-wrap input{width:100%;padding:8px 12px 8px 32px;border:1.5px solid var(--border);
+  border-radius:10px;font-size:.88em;background:var(--page);color:var(--text);outline:none}
+.search-wrap input:focus{border-color:var(--blue)}
+.si{position:absolute;left:9px;top:50%;transform:translateY(-50%);opacity:.5;pointer-events:none}
+.filter-sel{padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;
+  font-size:.82em;background:var(--page);color:var(--text);cursor:pointer;outline:none}
 
-/* Status filter chips */
-.chips {
-  display: flex; gap: 8px; padding: 12px 16px;
-  overflow-x: auto; -webkit-overflow-scrolling: touch;
-  background: var(--card-bg); border-bottom: 1px solid var(--border);
-}
-.chips::-webkit-scrollbar { display: none; }
-.chip {
-  white-space: nowrap; padding: 6px 14px; border-radius: 20px;
-  font-size: .8em; font-weight: 600; cursor: pointer;
-  border: 1.5px solid var(--border); color: var(--text-2);
-  background: var(--page-bg); transition: all .15s;
-}
-.chip.active { background: var(--blue); color: white; border-color: var(--blue); }
+/* ── Compteur ── */
+.counter{padding:8px 16px;font-size:.8em;color:var(--grey);background:var(--page)}
 
-/* Scroll */
-.scroll { padding: 0 0 calc(var(--safe-bottom) + 70px); overflow-y: auto; }
+/* ── Groupe formation ── */
+.group{margin-bottom:2px}
+.group-header{display:flex;align-items:center;gap:10px;
+  padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);
+  cursor:pointer;user-select:none;-webkit-user-select:none}
+.group-header:active{background:var(--blue-pale)}
+.group-prio{width:26px;height:26px;border-radius:8px;background:var(--blue);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:.75em;font-weight:700;flex-shrink:0}
+.group-title{flex:1;font-size:.92em;font-weight:700}
+.group-sub{font-size:.75em;color:var(--grey);font-weight:400}
+.group-count{font-size:.78em;font-weight:700;color:var(--grey)}
+.group-arrow{font-size:.8em;color:var(--grey);transition:transform .2s}
+.group.collapsed .group-arrow{transform:rotate(-90deg)}
 
-/* Loading */
-.loading { text-align: center; padding: 60px 20px; color: var(--grey); }
-.spinner { width: 36px; height: 36px; border: 3px solid var(--border);
-  border-top-color: var(--blue); border-radius: 50%;
-  animation: spin .7s linear infinite; margin: 0 auto 14px; }
-@keyframes spin { to { transform: rotate(360deg); } }
+/* ── Tableau ── */
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;min-width:520px}
+thead th{padding:8px 12px;font-size:.75em;font-weight:700;color:var(--grey);
+  text-align:left;background:var(--page);border-bottom:2px solid var(--border);
+  white-space:nowrap}
+thead th:first-child{width:44px;text-align:center}
+tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+tbody tr:active,tbody tr:hover{background:var(--blue-pale)}
+tbody tr.done{opacity:.6}
+td{padding:11px 12px;font-size:.85em;vertical-align:middle}
+td:first-child{text-align:center;width:44px}
 
-/* School card */
-.school-card {
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--border);
-  padding: 14px 16px;
-  display: flex; gap: 12px; align-items: flex-start;
-  cursor: pointer; transition: background .1s;
-  -webkit-user-select: none;
-}
-.school-card:active { background: var(--blue-pale); }
-.school-avatar {
-  width: 44px; height: 44px; border-radius: 12px;
-  background: var(--blue-pale); color: var(--blue);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.3em; flex-shrink: 0;
-}
-.school-info { flex: 1; min-width: 0; }
-.school-name { font-size: .92em; font-weight: 700; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis; }
-.school-meta { font-size: .78em; color: var(--grey); margin-top: 2px; }
-.school-bottom { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-.badge {
-  display: inline-block; padding: 3px 9px; border-radius: 10px;
-  font-size: .72em; font-weight: 700;
-}
-.b-todo { background: #e5e5ea; color: #666; }
-.b-brouillon { background: var(--orange-bg); color: var(--orange); }
-.b-contacte { background: #d0f0ff; color: #006699; }
-.b-attente { background: #e8d4f8; color: #6a0dad; }
-.b-reponse { background: var(--green-bg); color: var(--green); }
-.b-admis { background: #c6efce; color: #276221; }
-.b-refuse { background: var(--red-bg); color: var(--red); }
-.school-score { margin-left: auto; font-size: .8em; font-weight: 700; color: var(--grey); }
-.action-btn {
-  background: var(--green); color: white;
-  padding: 6px 14px; border-radius: 10px;
-  font-size: .78em; font-weight: 700; border: none;
-  cursor: pointer; white-space: nowrap;
-}
-.action-btn.relance { background: var(--blue-light); }
-.action-btn.update { background: #8e8e93; }
+/* Checkbox custom */
+.cb{width:22px;height:22px;border-radius:7px;border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .15s;flex-shrink:0;margin:auto}
+.cb.checked{background:var(--green);border-color:var(--green);color:#fff;font-size:13px}
 
-/* Empty state */
-.empty { text-align: center; padding: 48px 20px; color: var(--grey); }
-.empty .icon { font-size: 3em; margin-bottom: 12px; }
+.etab-name{font-weight:700;line-height:1.3}
+.etab-univ{font-size:.77em;color:var(--grey);margin-top:1px}
+.loc{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.loc-icon{opacity:.5;font-size:.9em}
+.tel{white-space:nowrap;color:var(--blue);text-decoration:none;font-weight:500}
+.tel:active{opacity:.7}
+.date-chip{display:inline-block;padding:3px 8px;border-radius:8px;
+  font-size:.75em;font-weight:700;white-space:nowrap}
+.date-urgente{background:var(--red-bg);color:var(--red)}
+.date-proche{background:var(--orange-bg);color:var(--orange)}
+.date-ok{background:var(--green-bg);color:var(--green)}
 
-/* Bottom nav */
-.bottom-nav {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  background: var(--card-bg); border-top: 1px solid var(--border);
-  display: flex; padding: 0 0 var(--safe-bottom);
-  z-index: 100; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-}
-.nav-item {
-  flex: 1; display: flex; flex-direction: column; align-items: center;
-  padding: 10px 4px 6px; text-decoration: none;
-  color: var(--grey); font-size: .65em; font-weight: 500; gap: 3px;
-}
-.nav-item.active { color: var(--blue); }
-.nav-icon { font-size: 1.6em; }
+/* Status badge */
+.badge{display:inline-block;padding:3px 9px;border-radius:9px;
+  font-size:.75em;font-weight:700;white-space:nowrap}
+.b-todo{background:#e5e5ea;color:#555}
+.b-brouillon{background:var(--orange-bg);color:var(--orange)}
+.b-contacte{background:#d0f0ff;color:#006699}
+.b-attente{background:var(--purple-bg);color:var(--purple)}
+.b-reponse{background:var(--green-bg);color:var(--green)}
+.b-admis{background:#c6efce;color:#276221}
+.b-refuse{background:var(--red-bg);color:var(--red)}
+.b-depose{background:#d0f0ff;color:#005588}
 
-/* ── Modal (bottom sheet) ─────────────────────────────────────── */
-.sheet-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.4);
-  z-index: 200; display: none; align-items: flex-end;
-}
-.sheet-overlay.open { display: flex; animation: fadeIn .2s ease; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.sheet {
-  background: var(--card-bg); border-radius: 24px 24px 0 0;
-  width: 100%; padding: 0 0 calc(var(--safe-bottom) + 16px);
-  animation: slideUp .3s ease;
-}
-@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-.sheet-handle {
-  width: 40px; height: 4px; background: var(--border);
-  border-radius: 2px; margin: 12px auto 4px;
-}
-.sheet-title {
-  padding: 12px 20px 16px; font-size: 1.1em; font-weight: 700;
-  border-bottom: 1px solid var(--border);
-}
-.sheet-school { font-size: .85em; color: var(--grey); font-weight: 400; }
-.sheet-body { padding: 16px 20px; }
-.field-label { font-size: .82em; font-weight: 600; color: var(--grey); margin-bottom: 6px; }
-.status-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 8px; margin-bottom: 16px;
-}
-.status-option {
-  padding: 10px 12px; border-radius: 12px; border: 2px solid var(--border);
-  text-align: center; font-size: .82em; font-weight: 600; cursor: pointer;
-  transition: all .15s;
-}
-.status-option.selected { border-color: var(--blue); background: var(--blue-pale); color: var(--blue); }
-textarea.notes {
-  width: 100%; padding: 12px; border: 1.5px solid var(--border);
-  border-radius: 12px; font-size: .9em; font-family: inherit;
-  background: var(--page-bg); color: var(--text);
-  resize: none; min-height: 80px; outline: none;
-  margin-bottom: 16px;
-}
-textarea.notes:focus { border-color: var(--blue); }
-.save-btn {
-  width: 100%; padding: 14px; background: var(--blue); color: white;
-  border: none; border-radius: 14px; font-size: 1em; font-weight: 700;
-  cursor: pointer;
-}
-.save-btn:active { opacity: .85; }
-.email-link {
-  display: block; padding: 12px 20px; color: var(--blue);
-  font-size: .88em; border-top: 1px solid var(--border);
-  text-decoration: none; font-weight: 500;
-}
+.actions{display:flex;gap:6px;align-items:center}
+.act-btn{padding:5px 10px;border-radius:8px;border:none;font-size:.75em;
+  font-weight:700;cursor:pointer;white-space:nowrap}
+.act-email{background:var(--blue-pale);color:var(--blue)}
+.act-tel{background:var(--green-bg);color:var(--green)}
+
+/* groupe collapsed */
+.group.collapsed .table-wrap{display:none}
+
+/* ── Bottom sheet ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;
+  display:none;align-items:flex-end}
+.overlay.open{display:flex;animation:fi .2s}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+.sheet{background:var(--card);border-radius:22px 22px 0 0;width:100%;
+  max-height:85vh;overflow-y:auto;animation:su .25s ease}
+@keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sh-handle{width:38px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 0}
+.sh-head{padding:14px 20px 14px;border-bottom:1px solid var(--border)}
+.sh-name{font-size:1em;font-weight:700}
+.sh-sub{font-size:.82em;color:var(--grey);margin-top:3px}
+.sh-body{padding:16px 20px}
+.sh-label{font-size:.8em;font-weight:700;color:var(--grey);
+  text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px}
+.sh-label:first-child{margin-top:0}
+.sh-info{display:flex;flex-direction:column;gap:8px;margin-bottom:2px}
+.sh-row{display:flex;align-items:center;gap:10px;font-size:.88em}
+.sh-row a{color:var(--blue);font-weight:600;text-decoration:none}
+.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.so{padding:10px;border-radius:12px;border:2px solid var(--border);
+  text-align:center;font-size:.82em;font-weight:600;cursor:pointer;transition:all .15s}
+.so.sel{border-color:var(--blue);background:var(--blue-pale);color:var(--blue)}
+textarea.notes{width:100%;padding:12px;border:1.5px solid var(--border);
+  border-radius:12px;font-size:.9em;font-family:inherit;background:var(--page);
+  color:var(--text);resize:none;min-height:80px;outline:none;margin-bottom:14px}
+textarea.notes:focus{border-color:var(--blue)}
+.save-btn{width:100%;padding:14px;background:var(--blue);color:#fff;border:none;
+  border-radius:14px;font-size:1em;font-weight:700;cursor:pointer}
+.save-btn:active{opacity:.85}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:calc(var(--safe-bottom)+78px);left:50%;
+  transform:translateX(-50%) translateY(10px);background:#222;color:#fff;
+  padding:9px 18px;border-radius:12px;font-size:.84em;font-weight:500;
+  z-index:300;opacity:0;transition:all .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Bottom nav ── */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);
+  border-top:1px solid var(--border);display:flex;padding:0 0 var(--safe-bottom);
+  z-index:100;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:10px 4px 6px;text-decoration:none;color:var(--grey);
+  font-size:.65em;font-weight:500;gap:3px}
+.nav-item.active{color:var(--blue)}
+.nav-icon{font-size:1.55em}
+
+/* ── Empty / loading ── */
+.loading{text-align:center;padding:60px 20px;color:var(--grey)}
+.spinner{width:34px;height:34px;border:3px solid var(--border);
+  border-top-color:var(--blue);border-radius:50%;
+  animation:sp .7s linear infinite;margin:0 auto 12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px 20px;color:var(--grey);font-size:.9em}
+
+.scroll-content{padding-bottom:calc(var(--safe-bottom)+72px)}
 </style>
 </head>
 <body>
 
-<!-- Header + search -->
+<!-- Header -->
 <div class="header">
   <div class="header-row">
-    <h1>🏫 Écoles contactées</h1>
-    <button style="background:rgba(255,255,255,.2);border:none;color:white;padding:7px 14px;border-radius:14px;font-size:.82em;font-weight:600;cursor:pointer" onclick="chargerDonnees()">🔄</button>
-  </div>
-  <div class="search-bar">
-    <span class="search-icon">🔍</span>
-    <input type="search" id="search" placeholder="Rechercher un établissement…" oninput="filtrerCartes()">
+    <h1>🏫 Établissements</h1>
+    <button class="sync-btn" onclick="chargerDonnees()">🔄 Sync</button>
   </div>
 </div>
 
-<!-- Chips statut -->
-<div class="chips" id="chips">
-  <div class="chip active" data-filter="all" onclick="setFilter('all', this)">Tous</div>
-  <div class="chip" data-filter="Brouillon prêt" onclick="setFilter('Brouillon prêt', this)">📨 Brouillons</div>
-  <div class="chip" data-filter="Contacté" onclick="setFilter('Contacté', this)">✅ Contactés</div>
-  <div class="chip" data-filter="En attente" onclick="setFilter('En attente', this)">⏳ En attente</div>
-  <div class="chip" data-filter="Réponse reçue" onclick="setFilter('Réponse reçue', this)">📬 Réponses</div>
-  <div class="chip" data-filter="À contacter" onclick="setFilter('À contacter', this)">○ À contacter</div>
+<!-- Toolbar -->
+<div class="toolbar">
+  <div class="search-wrap">
+    <span class="si">🔍</span>
+    <input type="search" id="search" placeholder="Rechercher…" oninput="filtrer()">
+  </div>
+  <select class="filter-sel" id="filtre-statut" onchange="filtrer()">
+    <option value="all">Tous</option>
+    <option value="À contacter">À contacter</option>
+    <option value="Brouillon prêt">📨 Brouillons</option>
+    <option value="Contacté">✅ Contactés</option>
+    <option value="En attente">⏳ En attente</option>
+    <option value="Réponse reçue">📬 Réponses</option>
+    <option value="Admis">🎉 Admis</option>
+  </select>
 </div>
 
-<!-- Liste -->
-<div class="scroll">
-  <div class="loading" id="loading">
-    <div class="spinner"></div>
-    <p>Chargement…</p>
-  </div>
-  <div id="ecoles-list"></div>
-  <div class="empty" id="empty" style="display:none">
-    <div class="icon">🏫</div>
-    <p>Aucun établissement ne correspond</p>
-  </div>
+<!-- Contenu -->
+<div class="scroll-content">
+  <div class="loading" id="loading"><div class="spinner"></div><p>Chargement…</p></div>
+  <div id="content" style="display:none"></div>
+  <div class="empty" id="empty" style="display:none">Aucun établissement trouvé</div>
 </div>
 
 <!-- Bottom nav -->
 <nav class="bottom-nav">
-  <a href="index.html" class="nav-item">
-    <span class="nav-icon">🏠</span>
-    Vue d'ensemble
-  </a>
-  <a href="ecoles.html" class="nav-item active">
-    <span class="nav-icon">🏫</span>
-    Écoles
-  </a>
-  <a href="#" class="nav-item" onclick="chargerDonnees();return false;">
-    <span class="nav-icon">🔄</span>
-    Actualiser
-  </a>
+  <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Tableau de bord</a>
+  <a href="ecoles.html" class="nav-item active"><span class="nav-icon">🏫</span>Établissements</a>
+  <a href="#" class="nav-item" onclick="chargerDonnees();return false;"><span class="nav-icon">🔄</span>Actualiser</a>
 </nav>
 
-<!-- Bottom sheet modal -->
-<div class="sheet-overlay" id="sheet-overlay" onclick="fermerSheet(event)">
+<!-- Bottom sheet -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)fermer()">
   <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title">
-      <div id="sheet-nom">—</div>
-      <div class="sheet-school" id="sheet-ville">—</div>
+    <div class="sh-handle"></div>
+    <div class="sh-head">
+      <div class="sh-name" id="sh-nom"></div>
+      <div class="sh-sub" id="sh-sub"></div>
     </div>
-    <div class="sheet-body">
-      <div class="field-label">Mettre à jour le statut</div>
-      <div class="status-grid" id="status-grid">
-        <div class="status-option" data-val="Contacté" onclick="selectStatus(this)">✉️ Contacté</div>
-        <div class="status-option" data-val="En attente" onclick="selectStatus(this)">⏳ En attente</div>
-        <div class="status-option" data-val="Réponse reçue" onclick="selectStatus(this)">📬 Réponse reçue</div>
-        <div class="status-option" data-val="Dossier déposé" onclick="selectStatus(this)">📁 Dossier déposé</div>
-        <div class="status-option" data-val="Admis" onclick="selectStatus(this)">🎉 Admis</div>
-        <div class="status-option" data-val="Refusé" onclick="selectStatus(this)">❌ Refusé</div>
+    <div class="sh-body">
+      <div class="sh-label">Informations</div>
+      <div class="sh-info" id="sh-info"></div>
+
+      <div class="sh-label">Mettre à jour le statut</div>
+      <div class="status-grid">
+        <div class="so" data-v="Brouillon prêt" onclick="selSt(this)">📨 Brouillon prêt</div>
+        <div class="so" data-v="Contacté"       onclick="selSt(this)">✅ Contacté</div>
+        <div class="so" data-v="En attente"     onclick="selSt(this)">⏳ En attente</div>
+        <div class="so" data-v="Réponse reçue"  onclick="selSt(this)">📬 Réponse reçue</div>
+        <div class="so" data-v="Dossier déposé" onclick="selSt(this)">📁 Dossier déposé</div>
+        <div class="so" data-v="Admis"          onclick="selSt(this)">🎉 Admis</div>
+        <div class="so" data-v="Refusé"         onclick="selSt(this)">❌ Refusé</div>
+        <div class="so" data-v="À contacter"    onclick="selSt(this)">○ À contacter</div>
       </div>
-      <div class="field-label">Notes</div>
-      <textarea class="notes" id="sheet-notes" placeholder="Ex : Entretien prévu le 15/04…"></textarea>
-      <button class="save-btn" onclick="sauvegarderStatut()">💾 Enregistrer</button>
+
+      <div class="sh-label">Notes</div>
+      <textarea class="notes" id="sh-notes" placeholder="Ex : Entretien prévu le 15/04…"></textarea>
+      <button class="save-btn" onclick="sauvegarder()">💾 Enregistrer</button>
     </div>
-    <a class="email-link" id="sheet-email-link" href="#" target="_blank">✉️ Envoyer un email →</a>
   </div>
 </div>
 
-<script>
-const SUPABASE_URL = 'https://bgfzucxocpwjjvimxsbk.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnZnp1Y3hvY3B3amp2aW14c2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNDE3MjEsImV4cCI6MjA4ODkxNzcyMX0.bCPVzXc0QJKvjcYqWp4hdAbX6CigYa5Gc_la5QMSG2M';
-const SUPABASE_SERVICE_KEY = ''; // Jamais ici — lecture seule depuis le browser
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
-let supabaseClient = null;
-if (SUPABASE_URL && SUPABASE_URL !== '') {
-  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-}
+<script>
+const SUPABASE_URL     = 'https://bgfzucxocpwjjvimxsbk.supabase.co';
+const SUPABASE_ANON_KEY= 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnZnp1Y3hvY3B3amp2aW14c2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNDE3MjEsImV4cCI6MjA4ODkxNzcyMX0.bCPVzXc0QJKvjcYqWp4hdAbX6CigYa5Gc_la5QMSG2M';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Données locales de secours (téléphones + infos depuis config Python)
+const DATA_LOCAL = [
+  // LP AII — priorité 1
+  {id:'lpaii_iut_de_nantes',       etablissement:'IUT de Nantes',          ville:'Nantes',       region:'Pays de la Loire',      telephone:'02 40 30 60 00', formation:'LP Automatismes et Informatique Industrielle', formation_id:'lpaii', formation_priorite:1, email_contact:'secretariat.lp@iutnantes.univ-nantes.fr',         lien_candidature:'https://candidatures.iutnantes.univ-nantes.fr',                    date_limite:'Mai 2026',   statut:'À contacter'},
+  {id:'lpaii_iut_grenoble_alpes',   etablissement:'IUT Grenoble Alpes',     ville:'Grenoble',     region:'Auvergne-Rhône-Alpes',   telephone:'04 76 82 53 00', formation:'LP Automatismes et Informatique Industrielle', formation_id:'lpaii', formation_priorite:1, email_contact:'lp-aii@iut.univ-grenoble-alpes.fr',                lien_candidature:'https://ecandidat.univ-grenoble-alpes.fr',                         date_limite:'Avril 2026', statut:'À contacter'},
+  {id:'lpaii_iut_lyon_1',           etablissement:'IUT Lyon 1',             ville:'Lyon',         region:'Auvergne-Rhône-Alpes',   telephone:'04 72 69 20 00', formation:'LP Automatismes et Informatique Industrielle', formation_id:'lpaii', formation_priorite:1, email_contact:'lp-geii@iut.univ-lyon1.fr',                        lien_candidature:'https://iut.univ-lyon1.fr/candidature',                            date_limite:'Mai 2026',   statut:'À contacter'},
+  {id:'lpaii_iut_paris-saclay_(or', etablissement:'IUT Paris-Saclay (Orsay)',ville:'Orsay',       region:'Île-de-France',          telephone:'01 69 15 60 00', formation:'LP Automatismes et Informatique Industrielle', formation_id:'lpaii', formation_priorite:1, email_contact:'geii@iut-orsay.universite-paris-saclay.fr',        lien_candidature:'https://ecandidat.universite-paris-saclay.fr',                     date_limite:'Avril 2026', statut:'À contacter'},
+  {id:'lpaii_iut_de_bordeaux',      etablissement:'IUT de Bordeaux',        ville:'Bordeaux',     region:'Nouvelle-Aquitaine',     telephone:'05 57 12 20 00', formation:'LP Automatismes et Informatique Industrielle', formation_id:'lpaii', formation_priorite:1, email_contact:'lp-geii@iut.u-bordeaux.fr',                        lien_candidature:'https://ecandidat.u-bordeaux.fr',                                  date_limite:'Mai 2026',   statut:'À contacter'},
+  // SARII — priorité 2
+  {id:'sarii_iut_cachan_(paris-sac', etablissement:'IUT Cachan (Paris-Saclay)',ville:'Cachan',    region:'Île-de-France',          telephone:'01 41 24 11 00', formation:'LP SARII', formation_id:'sarii', formation_priorite:2, email_contact:'sarii@iut-cachan.universite-paris-saclay.fr',     lien_candidature:'https://ecandidat.universite-paris-saclay.fr',                     date_limite:'Avril 2026', statut:'À contacter'},
+  {id:'sarii_iut_de_valenciennes',  etablissement:'IUT de Valenciennes',    ville:'Valenciennes', region:'Hauts-de-France',        telephone:'03 27 51 73 10', formation:'LP SARII', formation_id:'sarii', formation_priorite:2, email_contact:'lp-sarii@uphf.fr',                                 lien_candidature:'https://ecandidat.uphf.fr',                                        date_limite:'Mai 2026',   statut:'À contacter'},
+  {id:'sarii_iut_de_rennes',        etablissement:'IUT de Rennes',          ville:'Rennes',       region:'Bretagne',               telephone:'02 23 23 38 23', formation:'LP SARII', formation_id:'sarii', formation_priorite:2, email_contact:'lp-sarii@univ-rennes1.fr',                          lien_candidature:'https://ecandidat.univ-rennes1.fr',                                date_limite:'Mai 2026',   statut:'À contacter'},
+  // IA Industrie — priorité 3
+  {id:'ia_industrie_iut_de_bordeau',etablissement:'IUT de Bordeaux',        ville:'Bordeaux',     region:'Nouvelle-Aquitaine',     telephone:'05 57 12 20 00', formation:'LP IA pour l\'Industrie', formation_id:'ia_industrie', formation_priorite:3, email_contact:'lp-ia@iut.u-bordeaux.fr',     lien_candidature:'https://ecandidat.u-bordeaux.fr',                                  date_limite:'Mai 2026',   statut:'À contacter'},
+  {id:'ia_industrie_iut_de_valenci',etablissement:'IUT de Valenciennes',    ville:'Valenciennes', region:'Hauts-de-France',        telephone:'03 27 51 73 10', formation:'LP IA pour l\'Industrie', formation_id:'ia_industrie', formation_priorite:3, email_contact:'lp-ia@uphf.fr',               lien_candidature:'https://ecandidat.uphf.fr',                                        date_limite:'Mai 2026',   statut:'À contacter'},
+  // Cyber OT — priorité 4
+  {id:'cyber_ot_iut_de_valenciennes',etablissement:'IUT de Valenciennes',   ville:'Valenciennes', region:'Hauts-de-France',        telephone:'03 27 51 73 10', formation:'LP Cybersécurité OT', formation_id:'cyber_ot', formation_priorite:4, email_contact:'lp-cyber@uphf.fr',                   lien_candidature:'https://ecandidat.uphf.fr',                                        date_limite:'Avril 2026', statut:'À contacter'},
+  {id:'cyber_ot_imt_nord_europe',   etablissement:'IMT Nord Europe',        ville:'Douai',        region:'Hauts-de-France',        telephone:'03 27 71 22 22', formation:'LP Cybersécurité OT', formation_id:'cyber_ot', formation_priorite:4, email_contact:'admissions@imt-nord-europe.fr',       lien_candidature:'https://imt-nord-europe.fr/formations/candidature',                date_limite:'Avril 2026', statut:'À contacter'},
+  // Élec Puissance — priorité 5
+  {id:'elec_puissance_iut_cachan_(p',etablissement:'IUT Cachan (Paris-Saclay)',ville:'Cachan',    region:'Île-de-France',          telephone:'01 41 24 11 00', formation:'LP Électronique de Puissance', formation_id:'elec_puissance', formation_priorite:5, email_contact:'lp-epce@iut-cachan.universite-paris-saclay.fr', lien_candidature:'https://ecandidat.universite-paris-saclay.fr', date_limite:'Avril 2026', statut:'À contacter'},
+  {id:'elec_puissance_iut_grenoble_',etablissement:'IUT Grenoble Alpes',    ville:'Grenoble',     region:'Auvergne-Rhône-Alpes',   telephone:'04 76 82 53 00', formation:'LP Électronique de Puissance', formation_id:'elec_puissance', formation_priorite:5, email_contact:'lp-epce@iut.univ-grenoble-alpes.fr',           lien_candidature:'https://ecandidat.univ-grenoble-alpes.fr',     date_limite:'Mai 2026',   statut:'À contacter'},
+];
+
+// Noms complets des formations
+const FORM_LABELS = {
+  lpaii:         {nom:'LP Automatismes et Informatique Industrielle', short:'LP AII', emoji:'⚙️'},
+  sarii:         {nom:'LP SARII — Systèmes Automatisés, Réseaux et Informatique Industrielle', short:'LP SARII', emoji:'📡'},
+  ia_industrie:  {nom:'LP IA pour l\'Industrie / Data Industrie 4.0', short:'LP IA Industrie', emoji:'🤖'},
+  cyber_ot:      {nom:'LP Cybersécurité des Systèmes Industriels (OT)', short:'LP Cyber OT', emoji:'🔒'},
+  elec_puissance:{nom:'LP Électronique de Puissance et Conversion d\'Énergie', short:'LP Élec Puissance', emoji:'⚡'},
+};
+
+const BADGE_CLASS = {
+  'À contacter':'b-todo','Brouillon prêt':'b-brouillon','Contacté':'b-contacte',
+  'En attente':'b-attente','Réponse reçue':'b-reponse','Dossier déposé':'b-depose',
+  'Admis':'b-admis','Refusé':'b-refuse',
+};
 
 let toutesEcoles = [];
-let filtreActuel = 'all';
-let ecoleActive = null;
+let ecoleActive  = null;
 
-// ── Chargement ────────────────────────────────────────────────────────────────
+// ── Chargement ─────────────────────────────────────────────────────────────────
 async function chargerDonnees() {
   try {
-    if (supabaseClient) {
-      const { data, error } = await supabaseClient
-        .from('schools_tracking')
-        .select('*')
-        .order('formation_priorite', { ascending: true })
-        .order('etablissement', { ascending: true });
-      if (error) throw error;
-      toutesEcoles = data;
-      localStorage.setItem('ptp_ecoles_cache', JSON.stringify({ ecoles: data, ts: Date.now() }));
+    const { data, error } = await sb.from('schools_tracking').select('*').order('formation_priorite').order('etablissement');
+    if (!error && data && data.length > 0) {
+      // Fusionner avec téléphones du DATA_LOCAL (Supabase n'a pas le tel)
+      toutesEcoles = data.map(e => {
+        const local = DATA_LOCAL.find(l => l.id === e.id || l.etablissement === e.etablissement && l.formation_id === e.formation_id);
+        return { ...e, telephone: e.telephone || (local && local.telephone) || '' };
+      });
+      localStorage.setItem('ptp_ecoles_cache', JSON.stringify({ecoles: toutesEcoles, ts: Date.now()}));
     } else {
-      const cached = localStorage.getItem('ptp_ecoles_cache');
-      if (cached) {
-        toutesEcoles = JSON.parse(cached).ecoles;
-      }
+      throw new Error('no data');
     }
-    // Fusionner avec les mises à jour locales
-    const localUpdates = JSON.parse(localStorage.getItem('ptp_local_updates') || '{}');
-    toutesEcoles = toutesEcoles.map(e => ({
-      ...e, ...((localUpdates[e.id] || {}))
-    }));
-  } catch (err) {
-    console.error(err);
-  } finally {
-    document.getElementById('loading').style.display = 'none';
-    filtrerCartes();
+  } catch {
+    // Fallback cache puis data locale
+    const cached = localStorage.getItem('ptp_ecoles_cache');
+    if (cached) {
+      toutesEcoles = JSON.parse(cached).ecoles;
+    } else {
+      toutesEcoles = DATA_LOCAL;
+    }
   }
+
+  // Fusionner mises à jour locales
+  const lu = JSON.parse(localStorage.getItem('ptp_local_updates') || '{}');
+  toutesEcoles = toutesEcoles.map(e => ({...e, ...(lu[e.id] || {})}));
+
+  document.getElementById('loading').style.display = 'none';
+  filtrer();
 }
 
-// ── Filtre + Recherche ────────────────────────────────────────────────────────
-function setFilter(val, el) {
-  filtreActuel = val;
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  filtrerCartes();
-}
+// ── Filtre ─────────────────────────────────────────────────────────────────────
+function filtrer() {
+  const q  = document.getElementById('search').value.toLowerCase();
+  const st = document.getElementById('filtre-statut').value;
 
-function filtrerCartes() {
-  const q = document.getElementById('search').value.toLowerCase();
   const filtered = toutesEcoles.filter(e => {
-    const matchSearch = !q ||
-      e.etablissement.toLowerCase().includes(q) ||
-      e.ville.toLowerCase().includes(q) ||
-      (e.formation || '').toLowerCase().includes(q);
-    const matchFilter = filtreActuel === 'all' || e.statut === filtreActuel;
-    return matchSearch && matchFilter;
+    const mq = !q || e.etablissement.toLowerCase().includes(q) || e.ville.toLowerCase().includes(q)
+             || (e.formation||'').toLowerCase().includes(q) || (e.telephone||'').includes(q);
+    const ms = st === 'all' || e.statut === st;
+    return mq && ms;
   });
-  afficherCartes(filtered);
+
+  afficher(filtered);
 }
 
-// ── Affichage ─────────────────────────────────────────────────────────────────
-const BADGE = {
-  'À contacter': 'b-todo',
-  'Brouillon prêt': 'b-brouillon',
-  'Contacté': 'b-contacte',
-  'En attente': 'b-attente',
-  'Réponse reçue': 'b-reponse',
-  'Dossier déposé': 'b-reponse',
-  'Admis': 'b-admis',
-  'Refusé': 'b-refuse',
-};
-
-const ICON = {
-  'À contacter': '○', 'Brouillon prêt': '📨', 'Contacté': '✅',
-  'En attente': '⏳', 'Réponse reçue': '📬', 'Dossier déposé': '📁',
-  'Admis': '🎉', 'Refusé': '❌',
-};
-
-function actionLabel(statut) {
-  if (statut === 'Brouillon prêt') return ['✅ Confirmer envoi', 'action'];
-  if (statut === 'Contacté') return ['⏳ En attente', 'relance'];
-  if (statut === 'En attente') return ['📬 Réponse reçue', 'relance'];
-  return ['✏️ Mettre à jour', 'update'];
-}
-
-function afficherCartes(ecoles) {
-  const list = document.getElementById('ecoles-list');
-  const empty = document.getElementById('empty');
+// ── Rendu ──────────────────────────────────────────────────────────────────────
+function afficher(ecoles) {
+  const content = document.getElementById('content');
+  const empty   = document.getElementById('empty');
 
   if (ecoles.length === 0) {
-    list.innerHTML = '';
-    empty.style.display = 'block';
-    return;
+    content.style.display = 'none'; empty.style.display = 'block'; return;
   }
-  empty.style.display = 'none';
+  empty.style.display = 'none'; content.style.display = 'block';
 
-  list.innerHTML = ecoles.map(e => {
-    const statut = e.statut || 'À contacter';
-    const bClass = BADGE[statut] || 'b-todo';
-    const icon = ICON[statut] || '○';
-    const [btnLabel, btnClass] = actionLabel(statut);
-    const score = e.score_adequation ? `${e.score_adequation}/10` : '';
+  // Grouper par formation_id, ordonné par priorité
+  const groupes = {};
+  ecoles.forEach(e => {
+    const fid = e.formation_id || 'autre';
+    if (!groupes[fid]) groupes[fid] = {priorite: e.formation_priorite || 99, ecoles: []};
+    groupes[fid].ecoles.push(e);
+  });
+  const ordonnes = Object.entries(groupes).sort((a,b) => a[1].priorite - b[1].priorite);
 
-    return `<div class="school-card" onclick="ouvrirSheet('${encodeURIComponent(JSON.stringify(e))}')">
-      <div class="school-avatar">${icon}</div>
-      <div class="school-info">
-        <div class="school-name">${e.etablissement}</div>
-        <div class="school-meta">${e.ville} · Prio ${e.formation_priorite || '?'}</div>
-        <div class="school-bottom">
-          <span class="badge ${bClass}">${statut}</span>
-          ${score ? `<span class="school-score">⭐ ${score}</span>` : ''}
-          <button class="action-btn ${btnClass}" onclick="event.stopPropagation();actionRapide('${e.id}','${statut}')">${btnLabel}</button>
+  content.innerHTML = ordonnes.map(([fid, g]) => {
+    const fl   = FORM_LABELS[fid] || {nom: fid, short: fid, emoji:'🏫'};
+    const nbOk = g.ecoles.filter(e => ['Contacté','En attente','Réponse reçue','Dossier déposé','Admis'].includes(e.statut)).length;
+
+    const lignes = g.ecoles.map(e => {
+      const statut   = e.statut || 'À contacter';
+      const bClass   = BADGE_CLASS[statut] || 'b-todo';
+      const checked  = ['Contacté','En attente','Réponse reçue','Dossier déposé','Admis'].includes(statut);
+      const dateClass= dateCssClass(e.date_limite);
+      const tel      = e.telephone || '';
+      const encoded  = encodeURIComponent(JSON.stringify(e));
+
+      return `<tr class="${checked ? 'done' : ''}" onclick="ouvrirSheet('${encoded}')">
+        <td><div class="cb ${checked ? 'checked' : ''}" onclick="event.stopPropagation();toggleCheck('${e.id}','${statut}')" title="Marquer comme contacté">${checked ? '✓' : ''}</div></td>
+        <td>
+          <div class="etab-name">${e.etablissement}</div>
+          <div class="etab-univ">${e.universite || e.region || ''}</div>
+        </td>
+        <td><div class="loc"><span class="loc-icon">📍</span>${e.ville}</div><div style="font-size:.75em;color:var(--grey);margin-top:2px">${e.region || ''}</div></td>
+        <td>${tel ? `<a class="tel" href="tel:${tel.replace(/\s/g,'')}" onclick="event.stopPropagation()">${tel}</a>` : '<span style="color:var(--grey);font-size:.8em">—</span>'}</td>
+        <td><span class="date-chip ${dateClass}">${e.date_limite || '—'}</span></td>
+        <td><span class="badge ${bClass}">${statut}</span></td>
+        <td><div class="actions">
+          ${e.email_contact ? `<a class="act-btn act-email" href="mailto:${e.email_contact}?subject=Candidature%20LP%20PTP%20sept.%202026" onclick="event.stopPropagation()">✉️</a>` : ''}
+          ${tel ? `<a class="act-btn act-tel" href="tel:${tel.replace(/\s/g,'')}" onclick="event.stopPropagation()">📞</a>` : ''}
+        </div></td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="group" id="grp-${fid}">
+      <div class="group-header" onclick="toggleGroupe('${fid}')">
+        <div class="group-prio">${g.priorite}</div>
+        <div style="flex:1;min-width:0">
+          <div class="group-title">${fl.emoji} ${fl.short}</div>
+          <div class="group-sub">${fl.nom}</div>
         </div>
+        <div class="group-count">${nbOk}/${g.ecoles.length}</div>
+        <div class="group-arrow">▾</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th title="Contacté ?">✓</th>
+            <th>Établissement</th>
+            <th>Localisation</th>
+            <th>Téléphone</th>
+            <th>Date limite</th>
+            <th>Statut</th>
+            <th>Actions</th>
+          </tr></thead>
+          <tbody>${lignes}</tbody>
+        </table>
       </div>
     </div>`;
   }).join('');
 }
 
-// ── Action rapide ─────────────────────────────────────────────────────────────
-function actionRapide(id, statutActuel) {
-  const suivant = {
-    'Brouillon prêt': 'Contacté',
-    'Contacté': 'En attente',
-    'En attente': 'Réponse reçue',
-  };
-  const newStatut = suivant[statutActuel];
-  if (newStatut) {
-    sauvegarderLocalement(id, newStatut, '');
-    const ecole = toutesEcoles.find(e => e.id === id);
-    if (ecole) ecole.statut = newStatut;
-    filtrerCartes();
-  }
+function dateCssClass(dl) {
+  if (!dl) return 'date-ok';
+  const m = dl.toLowerCase();
+  if (m.includes('avril') || m.includes('mars')) return 'date-urgente';
+  if (m.includes('mai'))                          return 'date-proche';
+  return 'date-ok';
 }
 
-// ── Sheet modal ───────────────────────────────────────────────────────────────
+// ── Toggle groupe ──────────────────────────────────────────────────────────────
+function toggleGroupe(fid) {
+  document.getElementById('grp-' + fid).classList.toggle('collapsed');
+}
+
+// ── Checkbox rapide ────────────────────────────────────────────────────────────
+function toggleCheck(id, statutActuel) {
+  const estContacte = ['Contacté','En attente','Réponse reçue','Dossier déposé','Admis'].includes(statutActuel);
+  const newStatut   = estContacte ? 'À contacter' : 'Contacté';
+  sauvegarderLocalement(id, newStatut, '');
+  const idx = toutesEcoles.findIndex(e => e.id === id);
+  if (idx !== -1) toutesEcoles[idx].statut = newStatut;
+  filtrer();
+  toast(newStatut === 'Contacté' ? '✅ Marqué comme contacté' : '○ Remis à "À contacter"');
+}
+
+// ── Sheet ──────────────────────────────────────────────────────────────────────
 function ouvrirSheet(encoded) {
   const e = JSON.parse(decodeURIComponent(encoded));
   ecoleActive = e;
-  document.getElementById('sheet-nom').textContent = e.etablissement;
-  document.getElementById('sheet-ville').textContent = `${e.ville} · ${(e.formation || '').substring(0, 50)}`;
-  document.getElementById('sheet-notes').value = e.notes || '';
 
-  // Sélectionner statut actuel
-  document.querySelectorAll('.status-option').forEach(opt => {
-    opt.classList.toggle('selected', opt.dataset.val === e.statut);
-  });
+  document.getElementById('sh-nom').textContent = e.etablissement;
+  document.getElementById('sh-sub').textContent = `${e.ville} · ${(e.formation || '').substring(0,55)}`;
+  document.getElementById('sh-notes').value = e.notes || '';
 
-  // Lien email
-  const email = e.email_contact || '';
-  const emailLink = document.getElementById('sheet-email-link');
-  if (email) {
-    emailLink.href = `mailto:${email}?subject=Candidature%20LP%20Automatismes%20—%20PTP`;
-    emailLink.style.display = 'block';
-  } else {
-    emailLink.style.display = 'none';
-  }
+  // Infos
+  const tel = e.telephone || '';
+  const fl  = FORM_LABELS[e.formation_id] || {};
+  document.getElementById('sh-info').innerHTML = `
+    ${e.universite ? `<div class="sh-row">🏛️ <span>${e.universite}</span></div>` : ''}
+    <div class="sh-row">📍 <span>${e.ville}, ${e.region || ''}</span></div>
+    ${tel ? `<div class="sh-row">📞 <a href="tel:${tel.replace(/\s/g,'')}">${tel}</a></div>` : ''}
+    ${e.email_contact ? `<div class="sh-row">✉️ <a href="mailto:${e.email_contact}">${e.email_contact}</a></div>` : ''}
+    ${e.date_limite ? `<div class="sh-row">📅 <span>Date limite : <strong>${e.date_limite}</strong></span></div>` : ''}
+    ${e.lien_candidature ? `<div class="sh-row">🔗 <a href="${e.lien_candidature}" target="_blank">Lien candidature</a></div>` : ''}
+  `;
 
-  document.getElementById('sheet-overlay').classList.add('open');
+  // Statut sélectionné
+  document.querySelectorAll('.so').forEach(o => o.classList.toggle('sel', o.dataset.v === e.statut));
+
+  document.getElementById('overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
 
-function fermerSheet(e) {
-  if (e.target === document.getElementById('sheet-overlay')) {
-    document.getElementById('sheet-overlay').classList.remove('open');
-    document.body.style.overflow = '';
-  }
-}
-
-function selectStatus(el) {
-  document.querySelectorAll('.status-option').forEach(o => o.classList.remove('selected'));
-  el.classList.add('selected');
-}
-
-function sauvegarderStatut() {
-  if (!ecoleActive) return;
-  const selected = document.querySelector('.status-option.selected');
-  const statut = selected ? selected.dataset.val : ecoleActive.statut;
-  const notes = document.getElementById('sheet-notes').value;
-
-  sauvegarderLocalement(ecoleActive.id, statut, notes);
-
-  // Mettre à jour dans la liste locale
-  const idx = toutesEcoles.findIndex(e => e.id === ecoleActive.id);
-  if (idx !== -1) {
-    toutesEcoles[idx].statut = statut;
-    toutesEcoles[idx].notes = notes;
-  }
-
-  document.getElementById('sheet-overlay').classList.remove('open');
+function fermer() {
+  document.getElementById('overlay').classList.remove('open');
   document.body.style.overflow = '';
-  filtrerCartes();
+}
 
-  // Feedback visuel
-  afficherToast('✅ Statut mis à jour');
+function selSt(el) {
+  document.querySelectorAll('.so').forEach(o => o.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function sauvegarder() {
+  if (!ecoleActive) return;
+  const sel    = document.querySelector('.so.sel');
+  const statut = sel ? sel.dataset.v : ecoleActive.statut;
+  const notes  = document.getElementById('sh-notes').value;
+  sauvegarderLocalement(ecoleActive.id, statut, notes);
+  const idx = toutesEcoles.findIndex(e => e.id === ecoleActive.id);
+  if (idx !== -1) { toutesEcoles[idx].statut = statut; toutesEcoles[idx].notes = notes; }
+  fermer();
+  filtrer();
+  toast('💾 Statut enregistré');
 }
 
 function sauvegarderLocalement(id, statut, notes) {
-  const updates = JSON.parse(localStorage.getItem('ptp_local_updates') || '{}');
-  updates[id] = {
-    statut,
-    notes,
-    date_derniere_action: new Date().toISOString(),
-    date_derniere_action_fr: new Date().toLocaleDateString('fr-FR'),
-  };
-  localStorage.setItem('ptp_local_updates', JSON.stringify(updates));
+  const u = JSON.parse(localStorage.getItem('ptp_local_updates') || '{}');
+  u[id] = { statut, notes, date_derniere_action: new Date().toISOString() };
+  localStorage.setItem('ptp_local_updates', JSON.stringify(u));
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
-function afficherToast(msg) {
-  const t = document.createElement('div');
-  t.style.cssText = `
-    position:fixed;bottom:calc(var(--safe-bottom, 20px) + 80px);left:50%;
-    transform:translateX(-50%);background:#333;color:#fff;
-    padding:10px 20px;border-radius:24px;font-size:.88em;font-weight:600;
-    z-index:300;animation:fadeIn .2s ease;white-space:nowrap;
-  `;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2500);
+// ── Toast ──────────────────────────────────────────────────────────────────────
+function toast(msg, d=2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), d);
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
-}
+// ── Init ───────────────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 
-// Real-time
-if (supabaseClient) {
-  supabaseClient.channel('ecoles').on('postgres_changes',
-    { event: '*', schema: 'public', table: 'schools_tracking' },
-    () => chargerDonnees()
-  ).subscribe();
-}
+sb.channel('ecoles-rt')
+  .on('postgres_changes', {event:'*', schema:'public', table:'schools_tracking'}, chargerDonnees)
+  .subscribe();
 
 chargerDonnees();
 </script>

@@ -86,10 +86,12 @@ def construire_payload() -> list[dict]:
                 "date_premier_contact": None,
                 "date_derniere_action": datetime.utcnow().isoformat() + "Z" if a_brouillon else None,
                 "nb_emails_envoyes": 0,
+                "telephone": etab.get("telephone", ""),
                 "data_full": json.dumps({
                     "universite": etab.get("universite", ""),
                     "region": etab.get("region", ""),
                     "url": etab.get("url", ""),
+                    "telephone": etab.get("telephone", ""),
                     "competences_visees": formation.get("competences_visees", []),
                 }, ensure_ascii=False),
                 "updated_at": datetime.utcnow().isoformat() + "Z",
