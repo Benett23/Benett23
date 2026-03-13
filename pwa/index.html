@@ -567,12 +567,30 @@ async function chargerDonnees(forceRefresh = false) {
 }
 
 async function chargerDepuisSupabase() {
+  // Charger les écoles
   const { data: ecoles, error } = await supabaseClient
     .from('schools_tracking')
     .select('*')
     .order('formation_priorite', { ascending: true });
 
   if (error) throw error;
+
+  // Charger la dernière session pour récupérer docs_generes
+  const { data: sessions } = await supabaseClient
+    .from('sessions')
+    .select('stats')
+    .order('session_date', { ascending: false })
+    .limit(1);
+
+  if (sessions && sessions[0]) {
+    try {
+      const s = typeof sessions[0].stats === 'string'
+        ? JSON.parse(sessions[0].stats) : sessions[0].stats;
+      if (s.docs_generes) {
+        localStorage.setItem('ptp_session_cache', JSON.stringify(s));
+      }
+    } catch(e) {}
+  }
 
   const stats = calculerStats(ecoles);
   mettreAJourUI(stats, ecoles);
@@ -640,22 +658,24 @@ function mettreAJourUI(stats, ecoles) {
   document.getElementById('prog-bar').style.width = pct + '%';
   document.getElementById('prog-label').textContent = `${actifs} / ${total}`;
 
-  // Documents (état de la session actuelle)
+  // Documents — lus depuis la dernière session Supabase (ou localStorage en fallback)
   const docsHtml = [
-    { type: 'lettre_transitions_pro', label: 'Lettre Transitions Pro', icon: '📄' },
-    { type: 'lettre_iut', label: 'Lettre motivation IUT', icon: '📄' },
-    { type: 'planning_ptp', label: 'Planning PTP (.xlsx)', icon: '📊' },
-    { type: 'liste_contacts', label: 'Liste contacts IUT (.xlsx)', icon: '📋' },
-    { type: 'cv', label: 'CV actualisé', icon: '📋', manual: true },
+    { type: 'lettre_transitions_pro', label: 'Lettre Transitions Pro',    icon: '📄' },
+    { type: 'lettre_iut',             label: 'Lettre motivation IUT',     icon: '📄' },
+    { type: 'planning_ptp',           label: 'Planning PTP (.xlsx)',       icon: '📊' },
+    { type: 'liste_contacts',         label: 'Liste contacts IUT (.xlsx)', icon: '📋' },
+    { type: 'cv',                     label: 'CV actualisé',               icon: '📋', manual: true },
   ];
-  const savedDocs = JSON.parse(localStorage.getItem('ptp_docs_generes') || '[]');
+  // Chercher docs_generes dans le cache de session (mis à jour par initialiser_supabase.py)
+  const sessionCache = JSON.parse(localStorage.getItem('ptp_session_cache') || '{}');
+  const savedDocs = sessionCache.docs_generes || JSON.parse(localStorage.getItem('ptp_docs_generes') || '[]');
   document.getElementById('docs-list').innerHTML = docsHtml.map(d => {
     const done = savedDocs.includes(d.type);
     return `<li class="check-item">
       <span class="check-icon">${done ? '✅' : (d.manual ? '⬜' : '⏳')}</span>
       <div class="check-text">
-        <div class="check-title${done ? '' : ' '}" style="${done ? '' : 'color:var(--grey)'}">${d.icon} ${d.label}</div>
-        <div class="check-desc">${done ? 'Généré' : (d.manual ? 'À faire manuellement' : 'Sera généré par le système')}</div>
+        <div class="check-title" style="${done ? '' : 'color:var(--grey)'}">${d.icon} ${d.label}</div>
+        <div class="check-desc">${done ? '✅ Généré sur le PC' : (d.manual ? 'À faire manuellement' : 'Lancez DEMARRER.bat → option 1')}</div>
       </div>
     </li>`;
   }).join('');
