@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Écoles contactées — PTP Chris Gnabroyou</title>
+<style>
+  :root {
+    --blue: #1F497D; --blue-light: #4472C4; --blue-pale: #EBF3FB;
+    --green: #107c10; --green-bg: #dff0d8;
+    --orange: #d67f20; --orange-bg: #fff3cd;
+    --red: #c00; --red-bg: #fce4d6;
+    --grey: #666; --border: #ddd;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #333; }
+
+  .header { background: var(--blue); color: white; padding: 24px 32px; }
+  .header h1 { font-size: 1.5em; font-weight: 700; }
+  .header .meta { opacity: .8; font-size: .88em; margin-top: 5px; }
+
+  .nav { background: var(--blue-light); padding: 0 32px; display: flex; gap: 4px; }
+  .nav a {
+    color: white; text-decoration: none; padding: 12px 20px; font-size: .9em;
+    border-bottom: 3px solid transparent; transition: all .2s;
+  }
+  .nav a:hover, .nav a.active { border-bottom-color: white; background: rgba(255,255,255,.1); }
+
+  .container { max-width: 1300px; margin: 0 auto; padding: 24px 20px; }
+
+  /* Stats bar */
+  .stats-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+  .stat-chip {
+    display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+    background: white; border-radius: 20px; font-size: .85em; font-weight: 600;
+    box-shadow: 0 1px 4px rgba(0,0,0,.1); cursor: pointer; transition: all .2s;
+    border: 2px solid transparent;
+  }
+  .stat-chip:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,.15); }
+  .stat-chip.active { border-color: var(--blue); }
+  .stat-chip .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* Table */
+  .table-wrap { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.08); overflow: hidden; }
+  .table-controls {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  .table-controls input {
+    flex: 1; min-width: 200px; padding: 8px 14px; border: 1px solid var(--border);
+    border-radius: 20px; font-size: .9em; outline: none;
+  }
+  .table-controls input:focus { border-color: var(--blue-light); }
+  .table-controls select {
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 20px;
+    font-size: .85em; background: white; cursor: pointer;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: .87em; }
+  thead tr { background: var(--blue-pale); }
+  th {
+    padding: 11px 12px; text-align: left; font-weight: 600; color: var(--blue);
+    border-bottom: 2px solid var(--blue-light); cursor: pointer; white-space: nowrap;
+    user-select: none;
+  }
+  th:hover { background: #d6e8f8; }
+  th .sort-icon { margin-left: 4px; opacity: .5; font-size: .8em; }
+  td { padding: 10px 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
+  tr:hover td { background: #fafafa; }
+
+  /* Badges statut */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    font-size: .78em; font-weight: 600; white-space: nowrap;
+  }
+  .badge-a-contacter { background: #eee; color: #666; }
+  .badge-brouillon { background: var(--orange-bg); color: var(--orange); }
+  .badge-contacte { background: #d0f0ff; color: #0066aa; }
+  .badge-attente { background: #e8d4f8; color: #6a0dad; }
+  .badge-reponse { background: var(--green-bg); color: var(--green); }
+  .badge-admis { background: #c6efce; color: #276221; font-size:.85em; }
+  .badge-refuse { background: var(--red-bg); color: var(--red); }
+  .badge-dossier { background: #cce5ff; color: #004085; }
+
+  /* Boutons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 6px; font-size: .8em;
+    font-weight: 600; cursor: pointer; border: none; transition: all .15s;
+    text-decoration: none;
+  }
+  .btn-confirm { background: var(--green); color: white; }
+  .btn-confirm:hover { background: #0d6b0d; }
+  .btn-relance { background: var(--blue-light); color: white; }
+  .btn-relance:hover { background: var(--blue); }
+  .btn-view { background: #eee; color: #333; }
+  .btn-view:hover { background: #ddd; }
+
+  /* Score */
+  .score { font-weight: 700; }
+  .score-high { color: var(--green); }
+  .score-med { color: var(--orange); }
+  .score-low { color: var(--red); }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 40px; color: var(--grey); }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white; border-radius: 12px; padding: 28px; max-width: 520px;
+    width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,.3);
+  }
+  .modal h3 { color: var(--blue); margin-bottom: 16px; }
+  .modal label { display: block; font-size: .9em; font-weight: 600; margin-bottom: 6px; color: var(--blue); }
+  .modal select, .modal textarea {
+    width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: .9em; font-family: inherit; margin-bottom: 14px;
+  }
+  .modal textarea { min-height: 80px; resize: vertical; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+  .btn-cancel { background: #eee; color: #333; }
+  .btn-cancel:hover { background: #ddd; }
+  .btn-save { background: var(--blue); color: white; padding: 8px 20px; }
+  .btn-save:hover { background: var(--blue-light); }
+
+  .footer { text-align: center; color: var(--grey); font-size: .8em; padding: 20px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏫 Écoles contactées — Dossier PTP</h1>
+  <div class="meta">
+    Chris Gnabroyou | 14 établissements ciblés | Mis à jour : 12/03/2026 à 19:16
+  </div>
+</div>
+
+<div class="nav">
+  <a href="index.html">🏠 Vue d'ensemble</a>
+  <a href="ecoles.html" class="active">🏫 Écoles contactées</a>
+</div>
+
+<div class="container">
+
+  <!-- Stats chips -->
+  <div class="stats-bar">
+    <div class="stat-chip active" onclick="filterByStatus('all')" id="chip-all">
+      <div class="dot" style="background:#aaa"></div>
+      Tous (14)
+    </div>
+    <div class="stat-chip" onclick="filterByStatus('Brouillon prêt')" id="chip-brouillon">
+      <div class="dot" style="background:var(--orange)"></div>
+      Brouillon prêt (0)
+    </div>
+    <div class="stat-chip" onclick="filterByStatus('Contacté')" id="chip-contacte">
+      <div class="dot" style="background:#0099dd"></div>
+      Contacté (0)
+    </div>
+    <div class="stat-chip" onclick="filterByStatus('En attente')" id="chip-attente">
+      <div class="dot" style="background:#9b59b6"></div>
+      En attente (0)
+    </div>
+    <div class="stat-chip" onclick="filterByStatus('Réponse reçue')" id="chip-reponse">
+      <div class="dot" style="background:var(--green)"></div>
+      Réponse (0)
+    </div>
+    <div class="stat-chip" onclick="filterByStatus('À contacter')" id="chip-a-contacter">
+      <div class="dot" style="background:#ccc"></div>
+      À contacter (14)
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <div class="table-controls">
+      <input type="text" id="search-input" placeholder="🔍 Rechercher un établissement, ville, formation..." oninput="filterTable()">
+      <select id="filter-formation" onchange="filterTable()">
+        <option value="">Toutes les formations</option>
+        <option value="lpaii">Licence Pro Automatismes et Informatique Indu...</option><option value="sarii">Licence Pro SARII (Systèmes Automatisés, Rése...</option><option value="ia_industrie">Licence Pro IA pour l'Industrie / Data Indust...</option><option value="cyber_ot">Licence Pro Cybersécurité des Systèmes Indust...</option><option value="elec_puissance">Licence Pro Électronique de Puissance et Conv...</option>
+      </select>
+      <select id="filter-priorite" onchange="filterTable()">
+        <option value="">Toutes priorités</option>
+        <option value="1">Priorité 1</option><option value="2">Priorité 2</option><option value="3">Priorité 3</option><option value="4">Priorité 4</option><option value="5">Priorité 5</option>
+      </select>
+    </div>
+
+    <table id="ecoles-table">
+      <thead>
+        <tr>
+          <th onclick="sortTable(0)">Établissement <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable(1)">Ville <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable(2)">Formation <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable(3)">Prio <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable(4)">Email contact <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable(5)">Date limite <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable(6)">Score <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable(7)">Statut <span class="sort-icon">↕</span></th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="ecoles-tbody">
+        <tr data-id="lpaii_iut_de_nantes" data-statut="À contacter"
+            data-formid="lpaii" data-prio="1">
+          <td><strong>IUT de Nantes</strong><br><small style="color:#888">Université de Nantes</small></td>
+          <td>Nantes</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro Automatismes et Informatique Industrielle…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐1</strong></td>
+          <td style="font-size:.85em"><a href="mailto:secretariat.lp@iutnantes.univ-nantes.fr">secretariat.lp@iutnantes.univ-nantes.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Mai 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('lpaii_iut_de_nantes', 'IUT de Nantes', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://candidatures.iutnantes.univ-nantes.fr" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+        <tr data-id="lpaii_iut_grenoble_alpes" data-statut="À contacter"
+            data-formid="lpaii" data-prio="1">
+          <td><strong>IUT Grenoble Alpes</strong><br><small style="color:#888">Université Grenoble Alpes</small></td>
+          <td>Grenoble</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro Automatismes et Informatique Industrielle…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐1</strong></td>
+          <td style="font-size:.85em"><a href="mailto:lp-aii@iut.univ-grenoble-alpes.fr">lp-aii@iut.univ-grenoble-alpes.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Avril 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('lpaii_iut_grenoble_alpes', 'IUT Grenoble Alpes', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://ecandidat.univ-grenoble-alpes.fr" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+        <tr data-id="lpaii_iut_lyon_1" data-statut="À contacter"
+            data-formid="lpaii" data-prio="1">
+          <td><strong>IUT Lyon 1</strong><br><small style="color:#888">Université Claude Bernard Lyon</small></td>
+          <td>Lyon</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro Automatismes et Informatique Industrielle…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐1</strong></td>
+          <td style="font-size:.85em"><a href="mailto:lp-geii@iut.univ-lyon1.fr">lp-geii@iut.univ-lyon1.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Mai 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('lpaii_iut_lyon_1', 'IUT Lyon 1', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://iut.univ-lyon1.fr/candidature" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+        <tr data-id="lpaii_iut_paris-saclay_(or" data-statut="À contacter"
+            data-formid="lpaii" data-prio="1">
+          <td><strong>IUT Paris-Saclay (Orsay)</strong><br><small style="color:#888">Université Paris-Saclay</small></td>
+          <td>Orsay</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro Automatismes et Informatique Industrielle…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐1</strong></td>
+          <td style="font-size:.85em"><a href="mailto:geii@iut-orsay.universite-paris-saclay.fr">geii@iut-orsay.universite-paris-saclay.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Avril 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('lpaii_iut_paris-saclay_(or', 'IUT Paris-Saclay (Orsay)', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://ecandidat.universite-paris-saclay.fr" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+        <tr data-id="lpaii_iut_de_bordeaux" data-statut="À contacter"
+            data-formid="lpaii" data-prio="1">
+          <td><strong>IUT de Bordeaux</strong><br><small style="color:#888">Université de Bordeaux</small></td>
+          <td>Bordeaux</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro Automatismes et Informatique Industrielle…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐1</strong></td>
+          <td style="font-size:.85em"><a href="mailto:lp-geii@iut.u-bordeaux.fr">lp-geii@iut.u-bordeaux.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Mai 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('lpaii_iut_de_bordeaux', 'IUT de Bordeaux', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://ecandidat.u-bordeaux.fr" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+        <tr data-id="sarii_iut_cachan_(paris-sa" data-statut="À contacter"
+            data-formid="sarii" data-prio="2">
+          <td><strong>IUT Cachan (Paris-Saclay)</strong><br><small style="color:#888">Université Paris-Saclay</small></td>
+          <td>Cachan</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro SARII (Systèmes Automatisés, Réseaux et Informat…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐2</strong></td>
+          <td style="font-size:.85em"><a href="mailto:sarii@iut-cachan.universite-paris-saclay.fr">sarii@iut-cachan.universite-paris-saclay.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Avril 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('sarii_iut_cachan_(paris-sa', 'IUT Cachan (Paris-Saclay)', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://ecandidat.universite-paris-saclay.fr" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+        <tr data-id="sarii_iut_de_valenciennes" data-statut="À contacter"
+            data-formid="sarii" data-prio="2">
+          <td><strong>IUT de Valenciennes</strong><br><small style="color:#888">Université Polytechnique Hauts</small></td>
+          <td>Valenciennes</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro SARII (Systèmes Automatisés, Réseaux et Informat…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐2</strong></td>
+          <td style="font-size:.85em"><a href="mailto:lp-sarii@uphf.fr">lp-sarii@uphf.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Mai 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('sarii_iut_de_valenciennes', 'IUT de Valenciennes', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://ecandidat.uphf.fr" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+        <tr data-id="sarii_iut_de_rennes" data-statut="À contacter"
+            data-formid="sarii" data-prio="2">
+          <td><strong>IUT de Rennes</strong><br><small style="color:#888">Université de Rennes 1</small></td>
+          <td>Rennes</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro SARII (Systèmes Automatisés, Réseaux et Informat…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐2</strong></td>
+          <td style="font-size:.85em"><a href="mailto:lp-sarii@univ-rennes1.fr">lp-sarii@univ-rennes1.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Mai 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('sarii_iut_de_rennes', 'IUT de Rennes', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://ecandidat.univ-rennes1.fr" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+        <tr data-id="ia_industrie_iut_de_bordeaux" data-statut="À contacter"
+            data-formid="ia_industrie" data-prio="3">
+          <td><strong>IUT de Bordeaux</strong><br><small style="color:#888">Université de Bordeaux</small></td>
+          <td>Bordeaux</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro IA pour l'Industrie / Data Industrie 4.0…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐3</strong></td>
+          <td style="font-size:.85em"><a href="mailto:lp-ia@iut.u-bordeaux.fr">lp-ia@iut.u-bordeaux.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Mai 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('ia_industrie_iut_de_bordeaux', 'IUT de Bordeaux', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://ecandidat.u-bordeaux.fr" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+        <tr data-id="ia_industrie_iut_de_valenciennes" data-statut="À contacter"
+            data-formid="ia_industrie" data-prio="3">
+          <td><strong>IUT de Valenciennes</strong><br><small style="color:#888">Université Polytechnique Hauts</small></td>
+          <td>Valenciennes</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro IA pour l'Industrie / Data Industrie 4.0…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐3</strong></td>
+          <td style="font-size:.85em"><a href="mailto:lp-ia@uphf.fr">lp-ia@uphf.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Mai 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('ia_industrie_iut_de_valenciennes', 'IUT de Valenciennes', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://ecandidat.uphf.fr" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+        <tr data-id="cyber_ot_iut_de_valenciennes" data-statut="À contacter"
+            data-formid="cyber_ot" data-prio="4">
+          <td><strong>IUT de Valenciennes</strong><br><small style="color:#888">Université Polytechnique Hauts</small></td>
+          <td>Valenciennes</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro Cybersécurité des Systèmes Industriels (OT Secur…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐4</strong></td>
+          <td style="font-size:.85em"><a href="mailto:lp-cyber@uphf.fr">lp-cyber@uphf.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Avril 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('cyber_ot_iut_de_valenciennes', 'IUT de Valenciennes', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://ecandidat.uphf.fr" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+        <tr data-id="cyber_ot_imt_nord_europe" data-statut="À contacter"
+            data-formid="cyber_ot" data-prio="4">
+          <td><strong>IMT Nord Europe</strong><br><small style="color:#888">IMT Nord Europe</small></td>
+          <td>Douai</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro Cybersécurité des Systèmes Industriels (OT Secur…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐4</strong></td>
+          <td style="font-size:.85em"><a href="mailto:admissions@imt-nord-europe.fr">admissions@imt-nord-europe.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Avril 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('cyber_ot_imt_nord_europe', 'IMT Nord Europe', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://imt-nord-europe.fr/formations/candidature" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+        <tr data-id="elec_puissance_iut_cachan_(paris-sa" data-statut="À contacter"
+            data-formid="elec_puissance" data-prio="5">
+          <td><strong>IUT Cachan (Paris-Saclay)</strong><br><small style="color:#888">Université Paris-Saclay</small></td>
+          <td>Cachan</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro Électronique de Puissance et Conversion d'Énergi…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐5</strong></td>
+          <td style="font-size:.85em"><a href="mailto:lp-epce@iut-cachan.universite-paris-saclay.fr">lp-epce@iut-cachan.universite-paris-saclay.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Avril 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('elec_puissance_iut_cachan_(paris-sa', 'IUT Cachan (Paris-Saclay)', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://ecandidat.universite-paris-saclay.fr" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+        <tr data-id="elec_puissance_iut_grenoble_alpes" data-statut="À contacter"
+            data-formid="elec_puissance" data-prio="5">
+          <td><strong>IUT Grenoble Alpes</strong><br><small style="color:#888">Université Grenoble Alpes</small></td>
+          <td>Grenoble</td>
+          <td style="max-width:200px;font-size:.82em">Licence Pro Électronique de Puissance et Conversion d'Énergi…</td>
+          <td style="text-align:center"><strong style="color:var(--blue)">⭐5</strong></td>
+          <td style="font-size:.85em"><a href="mailto:lp-epce@iut.univ-grenoble-alpes.fr">lp-epce@iut.univ-grenoble-alpes.fr</a></td>
+          <td style="font-size:.85em;white-space:nowrap">Mai 2026</td>
+          <td style="text-align:center"></td>
+          <td class="statut-cell"><span class="badge badge-a-contacter">À contacter</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-view actions-cell" onclick="openModal('elec_puissance_iut_grenoble_alpes', 'IUT Grenoble Alpes', 'À contacter')">✏️ Mettre à jour</button>
+            <a href="https://ecandidat.univ-grenoble-alpes.fr" target="_blank" class="btn btn-view">🔗 Postuler</a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="empty" id="empty-msg" style="display:none">
+      Aucun établissement ne correspond aux filtres sélectionnés.
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal confirmation envoi -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3>✅ Confirmer l'action</h3>
+    <input type="hidden" id="modal-id">
+    <label>Établissement</label>
+    <div id="modal-etab" style="font-weight:600;margin-bottom:14px;color:var(--blue)"></div>
+    <label>Nouveau statut</label>
+    <select id="modal-statut">
+      <option value="Contacté">✉️ Contacté (email envoyé)</option>
+      <option value="En attente">⏳ En attente de réponse</option>
+      <option value="Réponse reçue">📬 Réponse reçue</option>
+      <option value="Dossier déposé">📁 Dossier déposé</option>
+      <option value="Admis">🎉 Admis</option>
+      <option value="Refusé">❌ Refusé</option>
+      <option value="Sans suite">🚫 Sans suite</option>
+    </select>
+    <label>Notes (optionnel)</label>
+    <textarea id="modal-notes" placeholder="Ex: Réponse positive, entretien prévu le 15/03..."></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-save" onclick="saveAction()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Système PTP Multi-Agents — Chris Gnabroyou |
+  <a href="index.html">← Retour au tableau de bord</a>
+</div>
+
+<script>
+// ── Données des écoles (persistance localStorage) ──────────────────────────
+const ECOLES_KEY = 'ptp_ecoles_Chris_Gnabroyou';
+
+function getEcolesData() {
+  return JSON.parse(localStorage.getItem(ECOLES_KEY) || '{}');
+}
+
+function setEcoleData(id, data) {
+  const all = getEcolesData();
+  all[id] = { ...all[id], ...data };
+  localStorage.setItem(ECOLES_KEY, JSON.stringify(all));
+}
+
+// ── Filtres & Recherche ─────────────────────────────────────────────────────
+let currentStatusFilter = 'all';
+
+function filterByStatus(status) {
+  currentStatusFilter = status;
+  document.querySelectorAll('.stat-chip').forEach(c => c.classList.remove('active'));
+  const chipId = status === 'all' ? 'chip-all'
+    : status === 'Brouillon prêt' ? 'chip-brouillon'
+    : status === 'Contacté' ? 'chip-contacte'
+    : status === 'En attente' ? 'chip-attente'
+    : status === 'Réponse reçue' ? 'chip-reponse'
+    : status === 'À contacter' ? 'chip-a-contacter' : 'chip-all';
+  const chip = document.getElementById(chipId);
+  if (chip) chip.classList.add('active');
+  filterTable();
+}
+
+function filterTable() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const formFilter = document.getElementById('filter-formation').value;
+  const prioFilter = document.getElementById('filter-priorite').value;
+  const rows = document.querySelectorAll('#ecoles-tbody tr');
+  let visible = 0;
+
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    const statut = row.dataset.statut || '';
+    const formId = row.dataset.formid || '';
+    const prio = row.dataset.prio || '';
+
+    const matchSearch = !search || text.includes(search);
+    const matchStatus = currentStatusFilter === 'all' || statut === currentStatusFilter;
+    const matchForm = !formFilter || formId === formFilter;
+    const matchPrio = !prioFilter || prio === prioFilter;
+
+    const show = matchSearch && matchStatus && matchForm && matchPrio;
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+
+  document.getElementById('empty-msg').style.display = visible === 0 ? 'block' : 'none';
+}
+
+// ── Tri des colonnes ────────────────────────────────────────────────────────
+let sortCol = -1, sortAsc = true;
+
+function sortTable(col) {
+  const tbody = document.getElementById('ecoles-tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  sortAsc = sortCol === col ? !sortAsc : true;
+  sortCol = col;
+
+  rows.sort((a, b) => {
+    const aVal = a.cells[col]?.textContent.trim() || '';
+    const bVal = b.cells[col]?.textContent.trim() || '';
+    return sortAsc ? aVal.localeCompare(bVal, 'fr') : bVal.localeCompare(aVal, 'fr');
+  });
+  rows.forEach(r => tbody.appendChild(r));
+
+  document.querySelectorAll('th .sort-icon').forEach((el, i) => {
+    el.textContent = i === col ? (sortAsc ? '↑' : '↓') : '↕';
+  });
+}
+
+// ── Modal confirmation ──────────────────────────────────────────────────────
+function openModal(id, nom, defaultStatus) {
+  document.getElementById('modal-id').value = id;
+  document.getElementById('modal-etab').textContent = nom;
+  document.getElementById('modal-statut').value = defaultStatus || 'Contacté';
+  document.getElementById('modal-notes').value = (getEcolesData()[id] || {}).notes || '';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function saveAction() {
+  const id = document.getElementById('modal-id').value;
+  const statut = document.getElementById('modal-statut').value;
+  const notes = document.getElementById('modal-notes').value;
+
+  setEcoleData(id, { statut, notes, date_action: new Date().toLocaleDateString('fr-FR') });
+
+  // Mettre à jour l'affichage de la ligne
+  const row = document.querySelector(`tr[data-id="${id}"]`);
+  if (row) {
+    row.dataset.statut = statut;
+    const badgeCell = row.querySelector('.statut-cell');
+    if (badgeCell) badgeCell.innerHTML = getBadgeHTML(statut);
+    const actionsCell = row.querySelector('.actions-cell');
+    if (actionsCell) actionsCell.innerHTML = getActionsHTML(id, row.querySelector('td').textContent, statut);
+  }
+  closeModal();
+}
+
+function getBadgeHTML(statut) {
+  const map = {
+    'À contacter': 'badge-a-contacter',
+    'Brouillon prêt': 'badge-brouillon',
+    'Contacté': 'badge-contacte',
+    'En attente': 'badge-attente',
+    'Réponse reçue': 'badge-reponse',
+    'Dossier déposé': 'badge-dossier',
+    'Admis': 'badge-admis',
+    'Refusé': 'badge-refuse',
+  };
+  return `<span class="badge ${map[statut] || 'badge-a-contacter'}">${statut}</span>`;
+}
+
+function getActionsHTML(id, nom, statut) {
+  const nextStatus = statut === 'Brouillon prêt' ? 'Contacté'
+    : statut === 'Contacté' ? 'En attente'
+    : statut === 'En attente' ? 'Réponse reçue'
+    : 'Mise à jour';
+  const btnLabel = statut === 'Brouillon prêt' ? '✅ Confirmer envoi'
+    : statut === 'Contacté' ? '⏳ Marquer en attente'
+    : statut === 'En attente' ? '📬 Réponse reçue'
+    : '✏️ Mettre à jour';
+  const safeNom = nom.replace(/'/g, "\'");
+  return `<button class="btn btn-confirm" onclick="openModal('${id}', '${safeNom}', '${nextStatus}')">${btnLabel}</button>`;
+}
+
+// ── Restaurer les statuts depuis localStorage ───────────────────────────────
+function restoreStatuts() {
+  const data = getEcolesData();
+  for (const [id, info] of Object.entries(data)) {
+    const row = document.querySelector(`tr[data-id="${id}"]`);
+    if (!row || !info.statut) continue;
+    row.dataset.statut = info.statut;
+    const badgeCell = row.querySelector('.statut-cell');
+    if (badgeCell) badgeCell.innerHTML = getBadgeHTML(info.statut);
+    const nomCell = row.cells[0]?.textContent || '';
+    const actionsCell = row.querySelector('.actions-cell');
+    if (actionsCell) actionsCell.innerHTML = getActionsHTML(id, nomCell, info.statut);
+  }
+}
+
+// Fermer modal en cliquant à l'extérieur
+document.getElementById('modal-overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+restoreStatuts();
+</script>
+</body>
+</html>

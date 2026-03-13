@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1F497D">
+<title>PTP — Documents</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="ptp.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+/* ── Tabs ─────────────────────────────────────────────────────── */
+.tabs{
+  display:flex;overflow-x:auto;
+  background:var(--card);border-bottom:1px solid var(--border);
+  position:sticky;top:52px;z-index:40;-webkit-overflow-scrolling:touch;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:0 6px
+}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  flex-shrink:0;padding:13px 14px;font-size:.86em;font-weight:600;
+  color:var(--text2);cursor:pointer;position:relative;
+  white-space:nowrap;transition:color .2s;border-bottom:2px solid transparent
+}
+.tab.active{color:#1d4ed8;border-bottom-color:#2563eb}
+@media(prefers-color-scheme:dark){.tab.active{color:#60a5fa;border-bottom-color:#3b82f6}}
+
+/* ── Layout ───────────────────────────────────────────────────── */
+.scroll{padding-bottom:calc(var(--safe-bottom)+72px)}
+.panel{display:none;padding:14px}
+.panel.active{display:block;animation:fadeUp .35s ease both}
+
+/* ── Doc card ─────────────────────────────────────────────────── */
+.doc-card{
+  background:var(--card);border-radius:var(--r-xl);
+  padding:18px;margin-bottom:14px;
+  box-shadow:var(--sh2);border:1px solid var(--border)
+}
+.doc-title{font-size:1.05em;font-weight:800;margin-bottom:6px;color:var(--text)}
+.doc-desc{font-size:.86em;color:var(--text2);margin-bottom:14px;line-height:1.5}
+
+/* ── Editor ───────────────────────────────────────────────────── */
+.editor{
+  width:100%;min-height:320px;padding:16px;
+  border:1.5px solid var(--border);border-radius:var(--r-lg);
+  font-size:.92em;line-height:1.7;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--card2);color:var(--text);
+  outline:none;resize:none;transition:border .15s,box-shadow .15s
+}
+.editor:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+@media(prefers-color-scheme:dark){.editor:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.2)}}
+
+/* ── Editor toolbar ───────────────────────────────────────────── */
+.editor-toolbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.et-btn{
+  padding:7px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);
+  background:var(--card2);color:var(--text);font-size:.85em;
+  cursor:pointer;font-weight:700;transition:all .12s
+}
+.et-btn:hover{border-color:#2563eb;color:#1d4ed8}
+.et-btn:active{background:#eff6ff;transform:scale(.96)}
+@media(prefers-color-scheme:dark){
+  .et-btn:hover{border-color:#3b82f6;color:#60a5fa}
+  .et-btn:active{background:rgba(59,130,246,.15)}
+}
+
+/* ── Action buttons ───────────────────────────────────────────── */
+.btn-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.btn{
+  padding:13px 16px;border-radius:var(--r-lg);border:none;
+  font-size:.92em;font-weight:700;cursor:pointer;flex:1;min-width:120px;
+  transition:all .15s
+}
+.btn:active{transform:scale(.97)}
+.btn-primary{
+  background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;
+  box-shadow:0 4px 14px rgba(37,99,235,.35)
+}
+.btn-secondary{
+  background:var(--card2);color:#1d4ed8;border:1.5px solid #2563eb
+}
+@media(prefers-color-scheme:dark){
+  .btn-secondary{color:#60a5fa;border-color:#3b82f6;background:rgba(59,130,246,.08)}
+}
+
+/* ── Status bar ───────────────────────────────────────────────── */
+.status-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 14px;border-radius:var(--r);font-size:.86em;margin-bottom:14px;
+  font-weight:600
+}
+.status-bar.ok{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
+.status-bar.pending{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+@media(prefers-color-scheme:dark){
+  .status-bar.ok{background:rgba(34,197,94,.15);color:#86efac;border-color:rgba(34,197,94,.25)}
+  .status-bar.pending{background:rgba(251,191,36,.12);color:#fcd34d;border-color:rgba(251,191,36,.2)}
+}
+
+/* ── Saved dot ────────────────────────────────────────────────── */
+.saved-dot{
+  display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:#059669;margin-right:5px
+}
+@media(prefers-color-scheme:dark){.saved-dot{background:#4ade80}}
+
+/* ── Planning table ───────────────────────────────────────────── */
+#planning-table{border-collapse:collapse;width:100%}
+#planning-table thead tr{background:linear-gradient(135deg,#1e3a8a,#1d4ed8) !important}
+#planning-table thead th{
+  padding:10px 12px !important;font-size:.82em !important;
+  color:#fff !important;font-weight:700;text-align:left
+}
+#planning-table tbody tr{transition:background .1s}
+#planning-table tbody tr:hover{filter:brightness(1.02)}
+#planning-table td{
+  border-bottom:1px solid var(--border) !important;
+  padding:11px 12px !important;font-size:.86em;color:var(--text)
+}
+#planning-table td strong{color:var(--text)}
+
+/* ── Upload zone ──────────────────────────────────────────────── */
+.upload-zone{
+  display:block;
+  border:2px dashed #93c5fd;border-radius:var(--r-lg);
+  padding:30px 16px;text-align:center;cursor:pointer;
+  color:#334155;font-size:.92em;transition:all .2s;background:#eff6ff
+}
+@media(prefers-color-scheme:dark){
+  .upload-zone{background:rgba(59,130,246,.09);border-color:rgba(59,130,246,.55);color:var(--text2)}
+}
+.upload-zone:active,.upload-zone.drag{
+  border-color:#2563eb;background:#dbeafe;box-shadow:0 0 0 4px rgba(37,99,235,.12)
+}
+.uz-icon{font-size:2.4em;display:block;margin-bottom:10px}
+.upload-zone strong{color:#1d4ed8;font-weight:700}
+@media(prefers-color-scheme:dark){.upload-zone strong{color:#60a5fa}}
+
+/* ── File list ────────────────────────────────────────────────── */
+.file-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.file-item{
+  display:flex;align-items:center;gap:12px;
+  background:var(--card2);padding:12px 14px;border-radius:var(--r-lg);
+  border:1px solid var(--border);transition:all .12s;
+  animation:fadeUp .3s ease both
+}
+.file-item:hover{border-color:#93c5fd;box-shadow:0 0 0 2px rgba(37,99,235,.12)}
+.file-icon{font-size:1.8em;flex-shrink:0}
+.file-info{flex:1;min-width:0}
+.file-name{font-size:.9em;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-meta{font-size:.78em;color:var(--text2);margin-top:3px}
+.file-btn{padding:7px 13px;border-radius:var(--r-sm);border:none;font-size:.82em;font-weight:700;cursor:pointer;transition:all .12s}
+.file-btn:active{transform:scale(.94)}
+.file-dl{background:#dbeafe;color:#1e40af}
+.file-del{background:#fee2e2;color:#dc2626;margin-left:4px}
+@media(prefers-color-scheme:dark){
+  .file-dl{background:rgba(59,130,246,.18);color:#93c5fd}
+  .file-del{background:rgba(248,113,113,.15);color:#fca5a5}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-row">
+    <h1>📄 Mes Documents</h1>
+    <span id="save-status" style="font-size:.82em;color:rgba(255,255,255,.92);font-weight:500"></span>
+  </div>
+</div>
+
+<!-- Onglets -->
+<div class="tabs">
+  <div class="tab active" onclick="showTab('transitions')">✉️ Lettre Transitions Pro</div>
+  <div class="tab" onclick="showTab('iut')">🏫 Lettre IUT</div>
+  <div class="tab" onclick="showTab('planning')">📅 Planning</div>
+  <div class="tab" onclick="showTab('cv')">📋 CV & Pièces jointes</div>
+</div>
+
+<div class="scroll">
+
+  <!-- ── Panel 1 : Lettre Transitions Pro ── -->
+  <div class="panel active" id="panel-transitions">
+    <div class="doc-card">
+      <div class="doc-title">✉️ Lettre de motivation — Transitions Pro (CPIR)</div>
+      <div class="doc-desc">Lettre à joindre à votre dossier PTP auprès de votre CPIR régional.</div>
+
+      <div id="status-transitions" class="status-bar pending">⏳ Non encore généré sur le PC</div>
+
+      <div class="editor-toolbar">
+        <button class="et-btn" onclick="exec('bold')"><b>G</b></button>
+        <button class="et-btn" onclick="exec('italic')"><i>I</i></button>
+        <button class="et-btn" onclick="exec('underline')"><u>S</u></button>
+        <button class="et-btn" onclick="exec('insertUnorderedList')">• Liste</button>
+        <button class="et-btn" onclick="reinitDoc('transitions')">↺ Réinitialiser</button>
+      </div>
+
+      <div class="editor" id="editor-transitions" contenteditable="true"
+           oninput="sauvegarderDoc('transitions')"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="telecharger('transitions', 'Lettre_Transitions_Pro')">⬇️ Télécharger (.html)</button>
+        <button class="btn btn-secondary" onclick="imprimerDoc('transitions')">🖨️ Imprimer / PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel 2 : Lettre IUT ── -->
+  <div class="panel" id="panel-iut">
+    <div class="doc-card">
+      <div class="doc-title">🏫 Lettre de motivation — IUT / Universités</div>
+      <div class="doc-desc">Lettre générique adaptable pour chaque IUT candidaté.</div>
+
+      <div id="status-iut" class="status-bar pending">⏳ Non encore généré sur le PC</div>
+
+      <div class="editor-toolbar">
+        <button class="et-btn" onclick="exec('bold')"><b>G</b></button>
+        <button class="et-btn" onclick="exec('italic')"><i>I</i></button>
+        <button class="et-btn" onclick="exec('underline')"><u>S</u></button>
+        <button class="et-btn" onclick="exec('insertUnorderedList')">• Liste</button>
+        <button class="et-btn" onclick="reinitDoc('iut')">↺ Réinitialiser</button>
+      </div>
+
+      <div class="editor" id="editor-iut" contenteditable="true"
+           oninput="sauvegarderDoc('iut')"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="telecharger('iut', 'Lettre_IUT')">⬇️ Télécharger (.html)</button>
+        <button class="btn btn-secondary" onclick="imprimerDoc('iut')">🖨️ Imprimer / PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel 3 : Planning ── -->
+  <div class="panel" id="panel-planning">
+    <div class="doc-card">
+      <div class="doc-title">📅 Planning des démarches PTP</div>
+      <div class="doc-desc">Calendrier des étapes clés pour votre dossier PTP.</div>
+
+      <div id="status-planning" class="status-bar pending">⏳ Non encore généré sur le PC</div>
+
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table id="planning-table" style="width:100%;border-collapse:collapse;min-width:500px;font-size:.85em">
+          <!-- Généré par JS -->
+        </table>
+      </div>
+
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn btn-primary" onclick="telechargerPlanning()">⬇️ Télécharger (.html)</button>
+        <button class="btn btn-secondary" onclick="window.print()">🖨️ Imprimer / PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel 4 : CV & Pièces jointes ── -->
+  <div class="panel" id="panel-cv">
+    <div class="doc-card">
+      <div class="doc-title">📋 CV & Pièces jointes</div>
+      <div class="doc-desc">Déposez ici votre CV, vos diplômes et tout document utile à votre dossier.</div>
+
+      <label class="upload-zone" for="file-input-doc">
+        <span class="uz-icon">⬆️</span>
+        <strong>Ajouter un document</strong><br>
+        CV, diplôme, attestation… (PDF, DOCX, JPG, PNG)
+      </label>
+      <input type="file" id="file-input-doc" style="display:none"
+             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+             onchange="uploadFichier(event)">
+
+      <div class="file-list" id="file-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom nav -->
+<nav class="bottom-nav">
+  <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Tableau de bord</a>
+  <a href="ecoles.html" class="nav-item"><span class="nav-icon">🏫</span>Établissements</a>
+  <a href="documents.html" class="nav-item active"><span class="nav-icon">📄</span>Documents</a>
+</nav>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL     = 'https://bgfzucxocpwjjvimxsbk.supabase.co';
+const SUPABASE_ANON_KEY= 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnZnp1Y3hvY3B3amp2aW14c2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNDE3MjEsImV4cCI6MjA4ODkxNzcyMX0.bCPVzXc0QJKvjcYqWp4hdAbX6CigYa5Gc_la5QMSG2M';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── Contenu par défaut des lettres ────────────────────────────────────────────
+const TEMPLATES = {
+transitions: `<p><strong>Chris Gnabroyou</strong><br>
+Technicien ascensoriste<br>
+Tél : [à compléter] — Email : Gnabroyouchris.étudiant@gmail.com</p>
+
+<p style="margin-top:16px">À l'attention du service Transitions Pro (CPIR)<br>
+[Adresse de votre CPIR régional]</p>
+
+<p style="margin-top:16px">[Ville], le ${new Date().toLocaleDateString('fr-FR')}</p>
+
+<p><strong>Objet : Demande de financement PTP — Licence Professionnelle Automatismes et Informatique Industrielle — Rentrée septembre 2026</strong></p>
+
+<p>Madame, Monsieur,</p>
+
+<p>Technicien ascensoriste depuis 4 ans, titulaire d'un <strong>BTS Électrotechnique</strong> et d'un Bac STI2D, je me permets de vous soumettre ma demande de financement dans le cadre du <strong>Projet de Transition Professionnelle (PTP)</strong>.</p>
+
+<p>Mon expérience professionnelle en maintenance et installation d'ascenseurs (variateurs de fréquence, câblage, schémas électriques, API, diagnostic électrotechnique) m'a permis de développer des compétences solides en électrotechnique industrielle. Cependant, souhaitant évoluer vers des postes à plus forte valeur ajoutée technique, j'envisage une reconversion vers les <strong>automatismes industriels et l'IoT</strong>.</p>
+
+<p>La <strong>Licence Professionnelle Automatismes et Informatique Industrielle</strong> constitue la formation la mieux adaptée à mon profil et à mes ambitions. Elle me permettrait de me spécialiser en programmation d'API (Siemens, Schneider), réseaux industriels et supervision SCADA, domaines en forte demande dans l'industrie 4.0.</p>
+
+<p>Mon projet de transition est mûrement réfléchi :</p>
+<ul>
+  <li>Cohérence directe entre mon BTS Électrotechnique et la Licence Pro visée</li>
+  <li>Débouchés solides dans l'industrie (automaticien, technicien IoT, responsable maintenance)</li>
+  <li>Mobilité nationale — prêt à me former partout en France</li>
+  <li>Financement PTP permettant un maintien de salaire sans risque pour mon employeur</li>
+</ul>
+
+<p>Je reste à votre disposition pour tout entretien ou document complémentaire.</p>
+
+<p>Dans l'attente de votre retour favorable, je vous adresse mes meilleures salutations.</p>
+
+<p><strong>Chris Gnabroyou</strong></p>`,
+
+iut: `<p><strong>Chris Gnabroyou</strong><br>
+Technicien ascensoriste — Candidat LP Automatismes<br>
+Email : Gnabroyouchris.étudiant@gmail.com — Tél : [à compléter]</p>
+
+<p style="margin-top:16px">À l'attention du secrétariat de la formation<br>
+[Nom de l'IUT / Université]<br>
+[Ville]</p>
+
+<p style="margin-top:16px">[Ville], le ${new Date().toLocaleDateString('fr-FR')}</p>
+
+<p><strong>Objet : Candidature en Licence Professionnelle — Automatismes et Informatique Industrielle — Rentrée septembre 2026 (financement PTP)</strong></p>
+
+<p>Madame, Monsieur,</p>
+
+<p>Technicien ascensoriste depuis 4 ans, titulaire d'un <strong>BTS Électrotechnique</strong> et d'un Bac STI2D, je me permets de vous adresser ma candidature pour intégrer votre <strong>Licence Professionnelle Automatismes et Informatique Industrielle</strong> à la rentrée de <strong>septembre 2026</strong>.</p>
+
+<p>Mon parcours professionnel en maintenance et installation d'ascenseurs m'a permis d'acquérir des compétences directement transposables à votre formation :</p>
+<ul>
+  <li>Câblage et appareillage électrotechnique industriel</li>
+  <li>Variateurs de fréquence et systèmes de commande</li>
+  <li>Lecture et réalisation de schémas électriques</li>
+  <li>Diagnostic et dépannage de systèmes automatisés</li>
+  <li>Respect des normes et réglementations de sécurité</li>
+</ul>
+
+<p>Ma démarche s'inscrit dans le cadre d'un <strong>Projet de Transition Professionnelle (PTP)</strong> financé par Transitions Pro, qui prend en charge les frais pédagogiques et maintient mon salaire. Ce financement garantit le sérieux de mon engagement et la pérennité de mon projet.</p>
+
+<p>Je suis <strong>mobile sur toute la France</strong> et particulièrement motivé par la perspective de rejoindre votre établissement, reconnu pour la qualité de sa formation en automatismes industriels.</p>
+
+<p>Je serais honoré de pouvoir présenter mon projet lors d'un entretien à votre convenance.</p>
+
+<p>Dans l'attente de votre réponse, je vous adresse mes meilleures salutations.</p>
+
+<p><strong>Chris Gnabroyou</strong></p>`,
+};
+
+// ── Planning des démarches (données) ─────────────────────────────────────────
+const ETAPES = [
+  {num:1, action:'Vérifier éligibilité PTP',             organisme:'Transitions Pro (CPIR)', delai:'Immédiat',       statut:'✅ Fait',      notes:'CDI/CDD + 24 mois expérience'},
+  {num:2, action:'Choisir la formation cible',            organisme:'Personnel',               delai:'Mars 2026',      statut:'🔄 En cours', notes:'LP AII en priorité'},
+  {num:3, action:'Contacter Transitions Pro',             organisme:'CPIR régional',           delai:'Avril 2026',     statut:'À faire',     notes:'Prendre RDV accompagnement'},
+  {num:4, action:'Candidater auprès des IUT',             organisme:'IUT / Universités',       delai:'Mars–Mai 2026',  statut:'🔄 En cours', notes:'eCandidat / email direct'},
+  {num:5, action:'Déposer le dossier PTP',                organisme:'Transitions Pro',         delai:'Juin 2026',      statut:'À faire',     notes:'Min. 3 mois avant rentrée'},
+  {num:6, action:'Informer l\'employeur',                 organisme:'Employeur actuel',        delai:'Juin 2026',      statut:'À faire',     notes:'Lettre recommandée AR'},
+  {num:7, action:'Confirmer le financement PTP',          organisme:'Transitions Pro',         delai:'Juillet 2026',   statut:'À faire',     notes:'Réponse ~2 mois après dépôt'},
+  {num:8, action:'Début de la formation',                 organisme:'IUT sélectionné',         delai:'Sept. 2026',     statut:'À faire',     notes:'Rentrée 2026-2027'},
+];
+
+// Couleurs calculées dynamiquement selon le mode (évite cellules blanches en dark)
+function getStatutColors() {
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return dark ? {
+    '✅ Fait':     'rgba(34,197,94,.14)',
+    '🔄 En cours': 'rgba(251,191,36,.14)',
+    'À faire':    'rgba(255,255,255,.04)',
+  } : {
+    '✅ Fait':     '#dff0d8',
+    '🔄 En cours': '#fff3cd',
+    'À faire':    '#f2f2f7',
+  };
+}
+
+// ── Onglets ───────────────────────────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const ids = ['transitions','iut','planning','cv'];
+    t.classList.toggle('active', ids[i] === id);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+}
+
+// ── Éditeur : initialisation ──────────────────────────────────────────────────
+function initEditeurs() {
+  ['transitions','iut'].forEach(k => {
+    const saved = localStorage.getItem('ptp_doc_' + k);
+    document.getElementById('editor-' + k).innerHTML = saved || TEMPLATES[k];
+  });
+  initPlanning();
+  afficherFichiers();
+  verifierDocsGeneres();
+}
+
+function verifierDocsGeneres() {
+  const session = JSON.parse(localStorage.getItem('ptp_session_cache') || '{}');
+  const docs    = session.docs_generes || [];
+  const map = {
+    transitions: 'lettre_transitions_pro',
+    iut:         'lettre_iut',
+    planning:    'planning_ptp',
+  };
+  Object.entries(map).forEach(([k, type]) => {
+    const el = document.getElementById('status-' + k);
+    if (el) {
+      if (docs.includes(type)) {
+        el.className = 'status-bar ok';
+        el.innerHTML = '<span class="saved-dot"></span>Fichier .docx/.xlsx généré sur le PC (lancez DEMARRER.bat → option 1)';
+      }
+    }
+  });
+}
+
+// ── Éditeur : sauvegarde auto ─────────────────────────────────────────────────
+let _saveTimer = null;
+function sauvegarderDoc(k) {
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    localStorage.setItem('ptp_doc_' + k, document.getElementById('editor-' + k).innerHTML);
+    const st = document.getElementById('save-status');
+    st.innerHTML = '<span style="color:#30d158">✓ Sauvegardé</span>';
+    setTimeout(() => { st.textContent = ''; }, 2000);
+  }, 600);
+}
+
+function reinitDoc(k) {
+  if (!confirm('Réinitialiser avec le modèle par défaut ? Vos modifications seront perdues.')) return;
+  document.getElementById('editor-' + k).innerHTML = TEMPLATES[k];
+  localStorage.removeItem('ptp_doc_' + k);
+  toast('↺ Document réinitialisé');
+}
+
+function exec(cmd) { document.execCommand(cmd, false, null); }
+
+// ── Téléchargement ────────────────────────────────────────────────────────────
+function telecharger(k, nom) {
+  const contenu = document.getElementById('editor-' + k).innerHTML;
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+<title>${nom}</title>
+<style>
+  body{font-family:Arial,sans-serif;max-width:750px;margin:40px auto;padding:30px;
+       font-size:11pt;line-height:1.7;color:#1c1c1e}
+  p{margin-bottom:10px} ul{margin:10px 0 10px 24px}
+  strong{font-weight:700}
+  @media print{body{margin:0;padding:20px}}
+</style></head><body>${contenu}</body></html>`;
+
+  const a = document.createElement('a');
+  a.href = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+  a.download = nom + '_' + new Date().toISOString().slice(0,10) + '.html';
+  a.click();
+  toast('⬇️ Téléchargement lancé');
+}
+
+function imprimerDoc(k) {
+  const contenu = document.getElementById('editor-' + k).innerHTML;
+  const w = window.open('', '_blank');
+  if (!w) { toast('⚠️ Autorisez les popups pour imprimer'); return; }
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>body{font-family:Arial,sans-serif;max-width:750px;margin:40px auto;font-size:11pt;line-height:1.7}
+p{margin-bottom:10px}ul{margin:10px 0 10px 24px}</style></head><body>${contenu}</body></html>`);
+  w.document.close();
+  w.print();
+}
+
+// ── Planning ──────────────────────────────────────────────────────────────────
+function initPlanning() {
+  const t    = document.getElementById('planning-table');
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const SC   = getStatutColors();
+  const borderColor  = dark ? '#30363d' : '#e5e5ea';
+  const numColor     = dark ? '#60a5fa' : '#1F497D';
+  const notesColor   = dark ? '#9aabb8' : '#6e6e73';
+  const defBg        = dark ? 'transparent' : '#fff';
+
+  t.innerHTML = `
+    <thead><tr style="background:#1e3a8a">
+      <th style="padding:9px 10px;text-align:left;font-size:.82em;color:#fff">#</th>
+      <th style="padding:9px 10px;text-align:left;font-size:.82em;color:#fff">Action</th>
+      <th style="padding:9px 10px;text-align:left;font-size:.82em;color:#fff">Organisme</th>
+      <th style="padding:9px 10px;text-align:left;font-size:.82em;color:#fff">Délai</th>
+      <th style="padding:9px 10px;text-align:left;font-size:.82em;color:#fff">Statut</th>
+    </tr></thead>
+    <tbody>
+      ${ETAPES.map(e => `<tr style="background:${SC[e.statut]||defBg};border-bottom:1px solid ${borderColor}">
+        <td style="padding:9px 10px;font-weight:700;color:${numColor}">${e.num}</td>
+        <td style="padding:9px 10px;font-weight:600;color:var(--text)">${e.action}<br>
+            <span style="font-size:.78em;color:${notesColor}">${e.notes}</span></td>
+        <td style="padding:9px 10px;font-size:.85em;color:var(--text2)">${e.organisme}</td>
+        <td style="padding:9px 10px;font-size:.85em;white-space:nowrap;color:var(--text2)">${e.delai}</td>
+        <td style="padding:9px 10px;font-size:.85em;white-space:nowrap;color:var(--text)">${e.statut}</td>
+      </tr>`).join('')}
+    </tbody>`;
+
+  // Statut
+  const el = document.getElementById('status-planning');
+  if (el) { el.className='status-bar ok'; el.innerHTML='<span class="saved-dot"></span>Tableau généré automatiquement'; }
+}
+
+function telechargerPlanning() {
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+<title>Planning PTP — Chris Gnabroyou</title>
+<style>
+  body{font-family:Arial,sans-serif;max-width:900px;margin:30px auto;padding:20px}
+  h2{color:#1F497D;margin-bottom:16px}
+  table{width:100%;border-collapse:collapse}
+  th{background:#1F497D;color:#fff;padding:10px;text-align:left;font-size:13px}
+  td{padding:9px 10px;border-bottom:1px solid #e5e5ea;font-size:12px}
+  @media print{body{margin:0}}
+</style></head><body>
+<h2>📅 Planning des démarches PTP — Chris Gnabroyou</h2>
+<p style="color:#6e6e73;font-size:13px;margin-bottom:16px">Généré le ${new Date().toLocaleDateString('fr-FR')}</p>
+${document.getElementById('planning-table').outerHTML}
+</body></html>`;
+  const a = document.createElement('a');
+  a.href = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+  a.download = 'Planning_PTP_' + new Date().toISOString().slice(0,10) + '.html';
+  a.click();
+  toast('⬇️ Planning téléchargé');
+}
+
+// ── Upload fichiers ───────────────────────────────────────────────────────────
+function uid() { return Math.random().toString(36).slice(2,10); }
+
+function getMeta() {
+  return JSON.parse(localStorage.getItem('ptp_docs_uploaded') || '[]');
+}
+function saveMeta(m) {
+  localStorage.setItem('ptp_docs_uploaded', JSON.stringify(m));
+}
+
+async function uploadFichier(e) {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  e.target.value = '';
+  toast('⏳ Enregistrement…', 5000);
+
+  const meta = {id: uid(), nom: f.name, type: f.type, taille: f.size, date: Date.now(), url: null, b64: null};
+
+  // Tenter Supabase Storage
+  try {
+    const chemin = `pj/${meta.id}_${f.name}`;
+    const {error} = await sb.storage.from('documents').upload(chemin, f, {contentType: f.type});
+    if (!error) {
+      const {data} = sb.storage.from('documents').getPublicUrl(chemin);
+      meta.url = data.publicUrl;
+    }
+  } catch {}
+
+  // Fallback base64
+  if (!meta.url) {
+    meta.b64 = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload  = ev => resolve(ev.target.result);
+      fr.onerror = ()  => reject(new Error('Lecture impossible'));
+      fr.readAsDataURL(f);
+    }).catch(() => null);
+    if (!meta.b64) { toast('⚠️ Impossible de lire le fichier'); return; }
+  }
+
+  const liste = getMeta();
+  liste.unshift(meta);
+  saveMeta(liste);
+  afficherFichiers();
+  toast(meta.url ? `✅ ${f.name} sauvegardé (cloud)` : `💾 ${f.name} sauvegardé (local)`);
+}
+
+function afficherFichiers() {
+  const liste  = getMeta();
+  const el     = document.getElementById('file-list');
+  if (liste.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:.85em;text-align:center;padding:16px">Aucun fichier déposé</p>';
+    return;
+  }
+  const ICON = {
+    'application/pdf':'📕', 'image/jpeg':'🖼️', 'image/png':'🖼️',
+    'application/msword':'📝',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'📝',
+  };
+  el.innerHTML = liste.map(f => {
+    const ico  = ICON[f.type] || '📎';
+    const kb   = f.taille ? (f.taille/1024).toFixed(0) + ' Ko' : '';
+    const date = new Date(f.date).toLocaleDateString('fr-FR');
+    const href = f.url || f.b64 || '#';
+    return `<div class="file-item">
+      <div class="file-icon">${ico}</div>
+      <div class="file-info">
+        <div class="file-name">${f.nom}</div>
+        <div class="file-meta">${kb} · ${date} ${f.url ? '· ☁️ cloud' : '· 💾 local'}</div>
+      </div>
+      <a class="file-btn file-dl" href="${href}" download="${f.nom}" ${f.b64 ? '' : 'target="_blank"'}>⬇️</a>
+      <button class="file-btn file-del" data-id="${f.id}" onclick="supprimerFichier(this.dataset.id)">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+function supprimerFichier(id) {
+  if (!confirm('Supprimer ce fichier ?')) return;
+  saveMeta(getMeta().filter(f => f.id !== id));
+  afficherFichiers();
+  toast('🗑️ Fichier supprimé');
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+function toast(msg, d=2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), d);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+initEditeurs();
+</script>
+</body>
+</html>

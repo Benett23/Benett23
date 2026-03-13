@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PTP">
+<meta name="theme-color" content="#1F497D">
+<title>PTP — Tableau de bord</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="ptp.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
+<style>
+/* ── Compat aliases (JS utilise ces noms) ───────────────────────── */
+:root{
+  --blue:#2563eb;--blue-light:#3b82f6;--blue-pale:#eff6ff;
+  --green:#059669;--green-bg:#dcfce7;
+  --orange:#b45309;--orange-bg:#fef3c7;
+  --red:#dc2626;--red-bg:#fee2e2;
+  --grey:#64748b;--card-bg:var(--card);--page-bg:var(--page);--text-2:var(--text2);
+}
+@media(prefers-color-scheme:dark){:root{
+  /* En dark mode les liens var(--blue) doivent être clairs */
+  --blue:#60a5fa;--blue-light:#93c5fd;--blue-pale:#1e3358;
+  --green:#4ade80;--green-bg:rgba(34,197,94,.14);
+  --orange:#fcd34d;--orange-bg:rgba(251,191,36,.12);
+  --red:#f87171;--red-bg:rgba(248,113,113,.12);
+  --grey:#9aabb8;
+}}
+
+/* ── Layout ─────────────────────────────────────────────────────── */
+.scroll{padding:16px 16px calc(var(--safe-bottom)+72px)}
+
+/* ── Loading ─────────────────────────────────────────────────────── */
+.loading{text-align:center;padding:60px 20px;color:var(--muted)}
+
+/* ── KPI Cards ────────────────────────────────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.kpi{
+  background:var(--card);border-radius:var(--r-lg);
+  padding:16px 10px;text-align:center;
+  box-shadow:var(--sh2);border:1px solid var(--border);
+  transition:transform .15s;animation:fadeUp .5s ease both;
+}
+.kpi:active{transform:scale(.97)}
+/* Couleur solide — lisible dans tous les contextes */
+.kpi .num{font-size:2.1em;font-weight:800;line-height:1;color:var(--b3)}
+.kpi .label{font-size:.72em;color:var(--muted);margin-top:6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.kpi.green .num{color:#059669}
+.kpi.orange .num{color:#b45309}
+@media(prefers-color-scheme:dark){
+  .kpi .num{color:#60a5fa}
+  .kpi.green .num{color:#4ade80}
+  .kpi.orange .num{color:#fcd34d}
+  .kpi .label{color:var(--muted)}
+}
+
+/* ── Section cards ────────────────────────────────────────────────── */
+.section{
+  background:var(--card);border-radius:var(--r-lg);overflow:hidden;
+  margin-bottom:14px;box-shadow:var(--sh2);border:1px solid var(--border);
+  animation:fadeUp .5s ease both;
+}
+.section-header{
+  padding:14px 16px;border-bottom:1px solid var(--border);
+  font-weight:700;font-size:1em;color:var(--text);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.section-header span{font-size:.82em;color:var(--muted);font-weight:500}
+
+/* ── Check list ──────────────────────────────────────────────────── */
+.checklist{list-style:none}
+.check-item{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 16px;border-bottom:1px solid var(--border);
+  transition:background .1s
+}
+.check-item:last-child{border-bottom:none}
+.check-item:active{background:var(--card2)}
+.check-icon{font-size:1.3em;flex-shrink:0}
+.check-text{flex:1}
+.check-title{font-size:.93em;font-weight:600;color:var(--text)}
+.check-desc{font-size:.82em;color:var(--text2);margin-top:3px;line-height:1.4}
+
+/* ── Alerte ──────────────────────────────────────────────────────── */
+.alert{
+  border-radius:var(--r-lg);padding:14px 16px;margin-bottom:14px;
+  border-left:4px solid #b45309;font-size:.9em;line-height:1.6;
+  background:#fef3c7;color:#78350f;
+  animation:fadeUp .4s ease both
+}
+.alert strong{color:#92400e;font-weight:800}
+@media(prefers-color-scheme:dark){
+  .alert{background:rgba(251,191,36,.12);color:#fcd34d;border-left-color:#fbbf24}
+  .alert strong{color:#fde68a}
+}
+
+/* ── Timeline étapes ──────────────────────────────────────────────── */
+.step-item{
+  display:flex;align-items:flex-start;gap:14px;
+  padding:13px 16px;border-bottom:1px solid var(--border);
+  transition:background .12s
+}
+.step-item:last-child{border-bottom:none}
+.step-item:active{background:var(--card2)}
+.step-num{
+  width:30px;height:30px;border-radius:50%;
+  background:#dbeafe;color:#1e40af;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.82em;font-weight:800;flex-shrink:0;margin-top:1px;
+  border:2px solid #bfdbfe;transition:all .2s
+}
+.step-num.done{background:#dcfce7;color:#166534;border-color:#bbf7d0}
+.step-num.doing{
+  background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+  color:#fff;border-color:#2563eb;
+  box-shadow:0 0 0 4px rgba(37,99,235,.2);animation:glow 2s ease infinite
+}
+@media(prefers-color-scheme:dark){
+  .step-num{background:rgba(59,130,246,.2);color:#93c5fd;border-color:rgba(59,130,246,.3)}
+  .step-num.done{background:rgba(34,197,94,.18);color:#86efac;border-color:rgba(34,197,94,.3)}
+}
+.step-body{flex:1}
+.step-title{font-size:.92em;font-weight:700;color:var(--text)}
+.step-desc{font-size:.82em;color:var(--text2);margin-top:3px;line-height:1.5}
+.step-badge{
+  font-size:.74em;font-weight:700;padding:3px 10px;border-radius:var(--r-full);
+  white-space:nowrap;align-self:center;flex-shrink:0
+}
+.badge-done{background:#dcfce7;color:#166534}
+.badge-doing{background:#dbeafe;color:#1e40af}
+.badge-todo{background:#f1f5f9;color:#64748b}
+@media(prefers-color-scheme:dark){
+  .badge-done{background:rgba(34,197,94,.18);color:#86efac}
+  .badge-doing{background:rgba(59,130,246,.2);color:#93c5fd}
+  .badge-todo{background:rgba(255,255,255,.08);color:var(--muted)}
+}
+
+/* ── Progress bar ────────────────────────────────────────────────── */
+.progress-wrap{
+  background:var(--border);border-radius:var(--r-full);
+  height:10px;margin:12px 16px 14px;overflow:hidden
+}
+.progress-bar{
+  height:100%;border-radius:var(--r-full);
+  background:linear-gradient(90deg,#1d4ed8,#3b82f6,#818cf8);
+  transition:width 1.2s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 0 8px rgba(37,99,235,.4);
+  background-size:200% 100%;animation:shimmer 2s ease infinite
+}
+
+/* ── Formations ──────────────────────────────────────────────────── */
+.form-item{
+  padding:13px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+  cursor:pointer;transition:background .1s;text-decoration:none;color:var(--text)
+}
+.form-item:last-child{border-bottom:none}
+.form-item:active{background:var(--card2)}
+.prio-dot{
+  width:38px;height:38px;border-radius:12px;
+  background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:.82em;flex-shrink:0;box-shadow:var(--sh-blue)
+}
+.form-info{flex:1}
+.form-name{font-size:.92em;font-weight:700;color:var(--text)}
+.form-count{font-size:.8em;color:var(--text2);margin-top:3px}
+.chevron{color:var(--muted);font-size:1.1em}
+
+/* ── Upload ─────────────────────────────────────────────────────── */
+.upload-zone{
+  display:block; /* label est inline par défaut — forcer block */
+  margin:12px 16px;
+  border:2px dashed #93c5fd;border-radius:var(--r-lg);
+  padding:24px 16px;text-align:center;cursor:pointer;
+  transition:all .2s;font-size:.92em;
+  background:#eff6ff;color:#334155;
+}
+@media(prefers-color-scheme:dark){
+  .upload-zone{
+    background:rgba(59,130,246,.09);
+    border-color:rgba(59,130,246,.55); /* plus visible en dark */
+    color:var(--text2);
+  }
+}
+.upload-zone:hover,.upload-zone.drag-over{
+  background:#dbeafe;border-color:#2563eb;box-shadow:0 0 0 4px rgba(37,99,235,.15)
+}
+.upload-zone .uz-icon{font-size:2.2em;display:block;margin-bottom:8px}
+.upload-zone strong{color:#1d4ed8;font-weight:700}
+@media(prefers-color-scheme:dark){.upload-zone strong{color:#60a5fa}}
+.upload-zone input{display:none}
+
+.doc-card{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  transition:background .1s
+}
+.doc-card:last-child{border-bottom:none}
+.doc-card:active{background:var(--card2)}
+.doc-file-icon{font-size:1.8em;flex-shrink:0}
+.doc-info{flex:1;min-width:0}
+.doc-name{font-size:.9em;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-meta{font-size:.78em;color:var(--text2);margin-top:3px;display:flex;align-items:center;gap:6px}
+.doc-actions{display:flex;gap:6px;flex-shrink:0}
+.btn-dl,.btn-del{border:none;border-radius:var(--r-sm);padding:7px 11px;font-size:.8em;font-weight:700;cursor:pointer;transition:all .12s}
+.btn-dl{background:#dbeafe;color:#1e40af}
+.btn-dl:active{background:#2563eb;color:#fff}
+.btn-del{background:#fee2e2;color:#dc2626}
+@media(prefers-color-scheme:dark){
+  .btn-dl{background:rgba(59,130,246,.2);color:#93c5fd}
+  .btn-del{background:rgba(248,113,113,.15);color:#fca5a5}
+}
+.upload-empty{padding:18px 16px;text-align:center;color:var(--muted);font-size:.86em}
+.badge-cloud{font-size:.72em;background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:var(--r-full);font-weight:700}
+.badge-local{font-size:.72em;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:var(--r-full);font-weight:700}
+@media(prefers-color-scheme:dark){
+  .badge-cloud{background:rgba(59,130,246,.2);color:#93c5fd}
+  .badge-local{background:rgba(251,191,36,.15);color:#fcd34d}
+}
+.upload-progress{height:4px;background:var(--border);margin:0 16px 12px;border-radius:var(--r-full);overflow:hidden;display:none}
+.upload-progress-bar{
+  height:100%;border-radius:var(--r-full);
+  background:linear-gradient(90deg,#1d4ed8,#3b82f6);
+  animation:progAnim 1.2s ease infinite
+}
+@keyframes progAnim{0%{width:5%}60%{width:85%}100%{width:95%}}
+
+/* ── Modal ──────────────────────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;
+  display:flex;align-items:flex-end;justify-content:center;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.modal-sheet{
+  background:var(--card);border-radius:var(--r-xl) var(--r-xl) 0 0;
+  padding:24px;width:100%;max-width:480px;
+  padding-bottom:calc(24px + var(--safe-bottom));
+  box-shadow:0 -8px 40px rgba(0,0,0,.2);animation:slideUp .25s ease
+}
+.modal-title{font-size:1.1em;font-weight:800;margin-bottom:4px;color:var(--text)}
+.modal-fname{font-size:.84em;color:var(--text2);margin-bottom:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
+.cat-btn{
+  padding:13px 10px;border:2px solid var(--border);border-radius:var(--r);
+  background:var(--card2);font-size:.88em;cursor:pointer;text-align:left;color:var(--text);
+  transition:all .15s
+}
+.cat-btn .ci{font-size:1.4em;display:block;margin-bottom:6px}
+.cat-btn:active{transform:scale(.97)}
+.cat-btn.sel{border-color:#2563eb;background:#eff6ff;color:#1e40af;font-weight:700;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+@media(prefers-color-scheme:dark){
+  .cat-btn.sel{background:rgba(37,99,235,.18);color:#93c5fd;border-color:#3b82f6}
+}
+.modal-btns{display:flex;gap:8px}
+.modal-btns button{padding:13px;border-radius:var(--r);font-size:.92em;font-weight:700;cursor:pointer;transition:all .12s}
+.btn-cancel{flex:1;border:1px solid var(--border);background:none;color:var(--text)}
+.btn-cancel:active{background:var(--card2)}
+.btn-send{flex:2;border:none;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;box-shadow:var(--sh-blue)}
+.btn-send:active{transform:scale(.97)}
+
+/* ── Lien "voir les écoles" ──────────────────────────────────────── */
+.voir-ecoles-link{
+  display:flex;align-items:center;justify-content:center;
+  padding:13px;font-size:.9em;font-weight:700;
+  color:#1d4ed8;text-decoration:none;border-top:1px solid var(--border)
+}
+.voir-ecoles-link:active{background:var(--card2)}
+@media(prefers-color-scheme:dark){.voir-ecoles-link{color:#60a5fa}}
+
+/* ── Notification banner ─────────────────────────────────────────── */
+.notif-banner{
+  background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;
+  padding:14px 16px;border-radius:var(--r-lg);margin-bottom:14px;
+  display:flex;align-items:center;gap:12px;cursor:pointer;
+  box-shadow:var(--sh-blue)
+}
+.notif-banner p{flex:1;font-size:.9em;font-weight:500}
+.notif-banner button{
+  background:rgba(255,255,255,.25);color:#fff;border:1px solid rgba(255,255,255,.3);
+  padding:7px 14px;border-radius:var(--r-full);font-size:.82em;font-weight:700;cursor:pointer;white-space:nowrap
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-row">
+    <div>
+      <h1>📋 PTP — Tableau de bord</h1>
+      <div class="sub" id="last-update">Chargement…</div>
+    </div>
+    <button class="sync-btn" onclick="chargerDonnees(true)" id="sync-btn">
+      🔄 Sync
+    </button>
+  </div>
+</div>
+
+<div class="scroll" id="main-content">
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Chargement des données…</p>
+  </div>
+
+  <!-- Contenu (masqué pendant loading) -->
+  <div id="content" style="display:none">
+
+    <!-- Banner notification push -->
+    <div class="notif-banner" id="notif-banner" style="display:none">
+      <span style="font-size:1.5em">🔔</span>
+      <p>Activez les notifications pour recevoir votre brief journalier</p>
+      <button onclick="activerNotifications()">Activer</button>
+    </div>
+
+    <!-- Alerte -->
+    <div class="alert">
+      <strong>⚡ Action prioritaire :</strong>
+      Dépôt dossier PTP minimum 3 mois avant la rentrée → avant juin 2026.
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi"><div class="num" id="k-total">—</div><div class="label">Établissements</div></div>
+      <div class="kpi" id="kpi-brouillon"><div class="num" id="k-brouillon">—</div><div class="label">Brouillons</div></div>
+      <div class="kpi" id="kpi-contacte"><div class="num" id="k-contacte">—</div><div class="label">Contactés</div></div>
+      <div class="kpi"><div class="num" id="k-attente">—</div><div class="label">En attente</div></div>
+      <div class="kpi" id="kpi-reponse"><div class="num" id="k-reponse">—</div><div class="label">Réponses</div></div>
+      <div class="kpi" id="kpi-admis"><div class="num" id="k-admis">—</div><div class="label">Admissions</div></div>
+    </div>
+
+    <!-- Progression globale -->
+    <div class="section">
+      <div class="section-header">
+        📊 Progression <span id="prog-label">0 / 0</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="prog-bar" style="width:0%"></div>
+      </div>
+      <a href="ecoles.html" class="voir-ecoles-link">
+        Voir le tableau des écoles →
+      </a>
+    </div>
+
+    <!-- Documents -->
+    <div class="section">
+      <div class="section-header">📄 Documents générés</div>
+      <ul class="checklist" id="docs-list">
+        <li class="check-item">
+          <span class="check-icon">⏳</span>
+          <div class="check-text">
+            <div class="check-title" style="color:var(--muted)">En attente du premier run Python</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Upload documents -->
+    <div class="section">
+      <div class="section-header">
+        📎 Mes documents
+        <span id="docs-count"></span>
+      </div>
+      <label class="upload-zone" id="upload-zone" for="file-input">
+        <span class="uz-icon">⬆️</span>
+        <strong>Ajouter un document</strong><br>
+        CV, lettre, diplôme… (PDF, DOCX, JPG)<br>
+        <small>Glisser-déposer ou cliquer</small>
+      </label>
+      <input type="file" id="file-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display:none">
+      <div class="upload-progress" id="upload-progress"><div class="upload-progress-bar"></div></div>
+      <div id="docs-uploaded"></div>
+    </div>
+
+    <!-- Étapes PTP -->
+    <div class="section">
+      <div class="section-header">🔁 Démarches PTP</div>
+      <div id="etapes-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Bilan de compétences (optionnel)</div>
+            <div class="step-desc">CEP / organisme agréé — Avant tout dépôt de dossier</div>
+          </div>
+          <span class="step-badge badge-todo">À faire</span>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">RDV Transitions Pro</div>
+            <div class="step-desc">transitionspro.fr — Accompagnement gratuit pour monter le dossier</div>
+          </div>
+          <span class="step-badge badge-todo">À faire</span>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Candidatures IUT</div>
+            <div class="step-desc">Parcoursup + dossiers directs — Mars–Mai 2026</div>
+          </div>
+          <span class="step-badge badge-doing">🔄 En cours</span>
+        </div>
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Dépôt dossier PTP</div>
+            <div class="step-desc">Transitions Pro — Avant juin 2026 (3 mois avant rentrée)</div>
+          </div>
+          <span class="step-badge badge-todo">À faire</span>
+        </div>
+        <div class="step-item">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <div class="step-title">Réponse Transitions Pro</div>
+            <div class="step-desc">~2 mois après dépôt — Financement formation + salaire maintenu</div>
+          </div>
+          <span class="step-badge badge-todo">À faire</span>
+        </div>
+        <div class="step-item">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <div class="step-title">Information employeur</div>
+            <div class="step-desc">Lettre recommandée — Après accord Transitions Pro</div>
+          </div>
+          <span class="step-badge badge-todo">À faire</span>
+        </div>
+        <div class="step-item">
+          <div class="step-num">7</div>
+          <div class="step-body">
+            <div class="step-title">Intégration formation</div>
+            <div class="step-desc">Rentrée septembre 2026</div>
+          </div>
+          <span class="step-badge badge-todo">À faire</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Formations -->
+    <div class="section">
+      <div class="section-header">🏫 Formations ciblées</div>
+      <div id="formations-list">
+        <div class="form-item">
+          <div class="prio-dot">⭐1</div>
+          <div class="form-info">
+            <div class="form-name">LP Automatismes Industriels & IoT</div>
+            <div class="form-count">6 établissements</div>
+          </div>
+          <span class="chevron">›</span>
+        </div>
+        <div class="form-item">
+          <div class="prio-dot">⭐2</div>
+          <div class="form-info">
+            <div class="form-name">Licence Pro SARII</div>
+            <div class="form-count">4 établissements</div>
+          </div>
+          <span class="chevron">›</span>
+        </div>
+        <div class="form-item">
+          <div class="prio-dot">⭐3</div>
+          <div class="form-info">
+            <div class="form-name">BUT GIM / Génie Industriel</div>
+            <div class="form-count">4 établissements</div>
+          </div>
+          <span class="chevron">›</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+  </div><!-- /content -->
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<!-- Modal catégorie document -->
+<div class="modal-overlay" id="upload-modal" style="display:none">
+  <div class="modal-sheet">
+    <div class="modal-title">Quel type de document ?</div>
+    <div class="modal-fname" id="modal-fname"></div>
+    <div class="cat-grid">
+      <button class="cat-btn sel" data-cat="cv"><span class="ci">📄</span>CV</button>
+      <button class="cat-btn" data-cat="lettre"><span class="ci">✉️</span>Lettre de motivation</button>
+      <button class="cat-btn" data-cat="diplome"><span class="ci">🎓</span>Diplôme / Relevé</button>
+      <button class="cat-btn" data-cat="autre"><span class="ci">📎</span>Autre</button>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="modal-cancel">Annuler</button>
+      <button class="btn-send" id="modal-send">Envoyer ↗</button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- Bottom navigation -->
+<nav class="bottom-nav">
+  <a href="index.html" class="nav-item active"><span class="nav-icon">🏠</span>Tableau de bord</a>
+  <a href="ecoles.html" class="nav-item"><span class="nav-icon">🏫</span>Établissements</a>
+  <a href="documents.html" class="nav-item"><span class="nav-icon">📄</span>Documents</a>
+</nav>
+
+<script>
+// ── Config Supabase (valeurs remplacées au déploiement) ──────────────────────
+const SUPABASE_URL = 'https://bgfzucxocpwjjvimxsbk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnZnp1Y3hvY3B3amp2aW14c2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNDE3MjEsImV4cCI6MjA4ODkxNzcyMX0.bCPVzXc0QJKvjcYqWp4hdAbX6CigYa5Gc_la5QMSG2M';
+const ONESIGNAL_APP_ID = '58577427-d872-46db-8b38-0ce4f497c80c';
+
+let supabaseClient = null;
+
+if (SUPABASE_URL && SUPABASE_URL !== '') {
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+// ── OneSignal init ────────────────────────────────────────────────────────────
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal) {
+  if (!ONESIGNAL_APP_ID || ONESIGNAL_APP_ID === '') return;
+  await OneSignal.init({
+    appId: ONESIGNAL_APP_ID,
+    safari_web_id: 'web.onesignal.auto.' + ONESIGNAL_APP_ID,
+    notifyButton: { enable: false },
+    allowLocalhostAsSecureOrigin: true,
+  });
+  const permission = await OneSignal.getNotificationPermission();
+  if (permission !== 'granted') {
+    document.getElementById('notif-banner').style.display = 'flex';
+  }
+});
+
+async function activerNotifications() {
+  OneSignalDeferred.push(async (OneSignal) => {
+    await OneSignal.showSlidedownPrompt();
+    document.getElementById('notif-banner').style.display = 'none';
+  });
+}
+
+// ── Chargement des données ───────────────────────────────────────────────────
+async function chargerDonnees(forceRefresh = false) {
+  const btn = document.getElementById('sync-btn');
+  btn.classList.add('refreshing');
+  btn.textContent = '⏳';
+
+  try {
+    if (supabaseClient) {
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 5000)
+      );
+      await Promise.race([chargerDepuisSupabase(), timeout]);
+    } else {
+      chargerDepuisLocalStorage();
+    }
+  } catch (err) {
+    console.error('Erreur chargement:', err);
+    chargerDepuisLocalStorage();
+  } finally {
+    btn.classList.remove('refreshing');
+    btn.textContent = '🔄 Sync';
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+  }
+}
+
+async function chargerDepuisSupabase() {
+  // Charger les écoles
+  const { data: ecoles, error } = await supabaseClient
+    .from('schools_tracking')
+    .select('*')
+    .order('formation_priorite', { ascending: true });
+
+  if (error) throw error;
+
+  // Charger la dernière session pour récupérer docs_generes
+  const { data: sessions } = await supabaseClient
+    .from('sessions')
+    .select('stats')
+    .order('session_date', { ascending: false })
+    .limit(1);
+
+  if (sessions && sessions[0]) {
+    try {
+      const s = typeof sessions[0].stats === 'string'
+        ? JSON.parse(sessions[0].stats) : sessions[0].stats;
+      if (s.docs_generes) {
+        localStorage.setItem('ptp_session_cache', JSON.stringify(s));
+      }
+    } catch(e) {}
+  }
+
+  const stats = calculerStats(ecoles);
+  mettreAJourUI(stats, ecoles);
+
+  const now = new Date().toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('last-update').textContent = `Mis à jour à ${now}`;
+  localStorage.setItem('ptp_ecoles_cache', JSON.stringify({ ecoles, ts: Date.now() }));
+}
+
+function chargerDepuisLocalStorage() {
+  const cached = localStorage.getItem('ptp_ecoles_cache');
+  if (cached) {
+    const { ecoles, ts } = JSON.parse(cached);
+    const stats = calculerStats(ecoles);
+    mettreAJourUI(stats, ecoles);
+    const d = new Date(ts);
+    document.getElementById('last-update').textContent =
+      `Cache du ${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}`;
+  } else {
+    document.getElementById('last-update').textContent = 'En attente de synchronisation';
+    mettreAJourUI({}, []);
+  }
+}
+
+function calculerStats(ecoles) {
+  const s = {
+    total: ecoles.length,
+    a_contacter: 0, brouillon_pret: 0, contacte: 0,
+    en_attente: 0, reponse_recue: 0, admis: 0,
+  };
+  ecoles.forEach(e => {
+    const st = e.statut || 'À contacter';
+    if (st === 'À contacter') s.a_contacter++;
+    else if (st === 'Brouillon prêt') s.brouillon_pret++;
+    else if (st === 'Contacté') s.contacte++;
+    else if (st === 'En attente') s.en_attente++;
+    else if (st === 'Réponse reçue') s.reponse_recue++;
+    else if (st === 'Admis') s.admis++;
+  });
+  return s;
+}
+
+function mettreAJourUI(stats, ecoles) {
+  const total = stats.total || 0;
+  document.getElementById('k-total').textContent = total;
+  document.getElementById('k-brouillon').textContent = stats.brouillon_pret || 0;
+  document.getElementById('k-contacte').textContent = stats.contacte || 0;
+  document.getElementById('k-attente').textContent = stats.en_attente || 0;
+  document.getElementById('k-reponse').textContent = stats.reponse_recue || 0;
+  document.getElementById('k-admis').textContent = stats.admis || 0;
+
+  // Couleurs KPI
+  const b = stats.brouillon_pret || 0;
+  const c = stats.contacte || 0;
+  const r = stats.reponse_recue || 0;
+  const a = stats.admis || 0;
+  document.getElementById('kpi-brouillon').className = 'kpi' + (b > 0 ? ' orange' : '');
+  document.getElementById('kpi-contacte').className = 'kpi' + (c > 0 ? ' green' : '');
+  document.getElementById('kpi-reponse').className = 'kpi' + (r > 0 ? ' green' : '');
+  document.getElementById('kpi-admis').className = 'kpi' + (a > 0 ? ' green' : '');
+
+  // Progression
+  const actifs = (stats.contacte || 0) + (stats.brouillon_pret || 0);
+  const pct = total > 0 ? Math.round(actifs * 100 / total) : 0;
+  document.getElementById('prog-bar').style.width = pct + '%';
+  document.getElementById('prog-label').textContent = `${actifs} / ${total}`;
+
+  // Documents — lus depuis la dernière session Supabase (ou localStorage en fallback)
+  const docsHtml = [
+    { type: 'lettre_transitions_pro', label: 'Lettre Transitions Pro',    icon: '📄' },
+    { type: 'lettre_iut',             label: 'Lettre motivation IUT',     icon: '📄' },
+    { type: 'planning_ptp',           label: 'Planning PTP (.xlsx)',       icon: '📊' },
+    { type: 'liste_contacts',         label: 'Liste contacts IUT (.xlsx)', icon: '📋' },
+    { type: 'cv',                     label: 'CV actualisé',               icon: '📋', manual: true },
+  ];
+  // Chercher docs_generes dans le cache de session (mis à jour par initialiser_supabase.py)
+  const sessionCache = JSON.parse(localStorage.getItem('ptp_session_cache') || '{}');
+  const savedDocs = sessionCache.docs_generes || JSON.parse(localStorage.getItem('ptp_docs_generes') || '[]');
+  document.getElementById('docs-list').innerHTML = docsHtml.map(d => {
+    const done = savedDocs.includes(d.type);
+    return `<li class="check-item">
+      <span class="check-icon">${done ? '✅' : (d.manual ? '⬜' : '⏳')}</span>
+      <div class="check-text">
+        <div class="check-title" style="${done ? '' : 'color:var(--grey)'}">${d.icon} ${d.label}</div>
+        <div class="check-desc">${done ? '✅ Généré sur le PC' : (d.manual ? 'À faire manuellement' : 'Lancez DEMARRER.bat → option 1')}</div>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+// ── Service Worker ────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// ── Supabase real-time subscription ──────────────────────────────────────────
+function abonnerTempsReel() {
+  if (!supabaseClient) return;
+  supabaseClient
+    .channel('schools-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'schools_tracking' }, () => {
+      chargerDonnees();
+    })
+    .subscribe();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, duree = 2800) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), duree);
+}
+
+// ── Gestion documents ─────────────────────────────────────────────────────────
+const DOCS_KEY = 'ptp_documents_v2';
+const CAT_LABELS = { cv:'CV', lettre:'Lettre de motivation', diplome:'Diplôme / Relevé', autre:'Autre' };
+const CAT_ICONS  = { cv:'📄', lettre:'✉️', diplome:'🎓', autre:'📎' };
+let _uploadFile = null, _uploadCat = 'cv';
+
+function docsMeta() { return JSON.parse(localStorage.getItem(DOCS_KEY) || '[]'); }
+function saveMeta(arr) { localStorage.setItem(DOCS_KEY, JSON.stringify(arr)); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmtSize(b) {
+  if (b < 1024) return b + ' o';
+  if (b < 1048576) return (b/1024).toFixed(0) + ' Ko';
+  return (b/1048576).toFixed(1) + ' Mo';
+}
+
+function afficherDocs() {
+  const liste = docsMeta();
+  const container = document.getElementById('docs-uploaded');
+  const counter = document.getElementById('docs-count');
+  counter.textContent = liste.length ? `${liste.length} fichier${liste.length > 1 ? 's' : ''}` : '';
+
+  if (!liste.length) {
+    container.innerHTML = '<div class="upload-empty">Aucun document — glisse ou clique pour ajouter</div>';
+    return;
+  }
+
+  container.innerHTML = liste.map(f => `
+    <div class="doc-card">
+      <span style="font-size:1.8em;flex-shrink:0">${CAT_ICONS[f.cat] || '📎'}</span>
+      <div class="doc-info">
+        <div class="doc-name" title="${f.nom}">${f.nom}</div>
+        <div class="doc-meta">
+          <span>${fmtSize(f.taille)}</span>
+          <span>·</span>
+          <span>${new Date(f.date).toLocaleDateString('fr-FR')}</span>
+          <span class="${f.url ? 'badge-cloud' : 'badge-local'}">${f.url ? '☁ Cloud' : '💾 Local'}</span>
+        </div>
+        <div style="font-size:.72em;color:var(--grey)">${CAT_LABELS[f.cat] || f.cat}</div>
+      </div>
+      <div class="doc-actions">
+        <button class="btn-dl" data-id="${f.id}" onclick="ouvrirDoc(this.dataset.id)">Ouvrir</button>
+        <button class="btn-del" data-id="${f.id}" onclick="supprimerDoc(this.dataset.id)">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function ouvrirDoc(id) {
+  const f = docsMeta().find(d => d.id === id);
+  if (!f) return;
+  if (f.url) {
+    window.open(f.url, '_blank');
+  } else if (f.b64) {
+    // fallback local: reconstruire un blob depuis base64
+    const byteStr = atob(f.b64.split(',')[1] || f.b64);
+    const ab = new Uint8Array(byteStr.length);
+    for (let i = 0; i < byteStr.length; i++) ab[i] = byteStr.charCodeAt(i);
+    const blob = new Blob([ab], { type: f.type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = f.nom;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+  }
+}
+
+async function supprimerDoc(id) {
+  const liste = docsMeta();
+  const f = liste.find(d => d.id === id);
+  if (!f) return;
+  if (f.chemin && supabaseClient) {
+    await supabaseClient.storage.from('documents').remove([f.chemin]);
+  }
+  saveMeta(liste.filter(d => d.id !== id));
+  afficherDocs();
+}
+
+async function envoyerFichier(fichier, cat) {
+  const prog = document.getElementById('upload-progress');
+  prog.style.display = 'block';
+  toast('⏳ Envoi en cours…', 10000);
+
+  const meta = { id: uid(), nom: fichier.name, type: fichier.type, taille: fichier.size, cat, date: Date.now(), url: null, chemin: null, b64: null };
+
+  // Tenter Supabase Storage
+  if (supabaseClient) {
+    try {
+      const chemin = `${cat}/${meta.id}_${fichier.name}`;
+      const { error } = await supabaseClient.storage.from('documents').upload(chemin, fichier, { contentType: fichier.type, upsert: false });
+      if (!error) {
+        const { data: urlData } = supabaseClient.storage.from('documents').getPublicUrl(chemin);
+        meta.url = urlData.publicUrl;
+        meta.chemin = chemin;
+      }
+    } catch(e) { /* fallback local */ }
+  }
+
+  // Fallback base64 locale si pas d'URL cloud
+  if (!meta.url) {
+    const reader = new FileReader();
+    meta.b64 = await new Promise((resolve, reject) => {
+      reader.onload  = e => resolve(e.target.result);
+      reader.onerror = ()  => reject(new Error('Lecture impossible'));
+      reader.readAsDataURL(fichier);
+    }).catch(() => null);
+    if (!meta.b64) {
+      prog.style.display = 'none';
+      toast('⚠️ Impossible de lire le fichier');
+      return;
+    }
+  }
+
+  const liste = docsMeta();
+  liste.unshift(meta);
+  saveMeta(liste);
+  prog.style.display = 'none';
+  afficherDocs();
+  toast(meta.url ? `✅ ${fichier.name} enregistré dans le cloud` : `💾 ${fichier.name} sauvegardé localement`);
+}
+
+// ── Modal catégorie ───────────────────────────────────────────────────────────
+function initModal() {
+  const modal = document.getElementById('upload-modal');
+  const catBtns = modal.querySelectorAll('.cat-btn');
+  _uploadCat = 'cv';
+
+  catBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      catBtns.forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+      _uploadCat = btn.dataset.cat;
+    });
+  });
+
+  document.getElementById('modal-cancel').addEventListener('click', () => {
+    modal.style.display = 'none';
+    _uploadFile = null;
+    document.getElementById('file-input').value = '';
+  });
+
+  document.getElementById('modal-send').addEventListener('click', async () => {
+    if (!_uploadFile) return;
+    modal.style.display = 'none';
+    await envoyerFichier(_uploadFile, _uploadCat);
+    _uploadFile = null;
+    document.getElementById('file-input').value = '';
+  });
+
+  modal.addEventListener('click', e => { if (e.target === modal) { modal.style.display = 'none'; _uploadFile = null; } });
+}
+
+function ouvrirModal(fichier) {
+  _uploadFile = fichier;
+  _uploadCat = 'cv';
+  document.getElementById('upload-modal').querySelectorAll('.cat-btn').forEach((b, i) => b.classList.toggle('sel', i === 0));
+  document.getElementById('modal-fname').textContent = fichier.name;
+  document.getElementById('upload-modal').style.display = 'flex';
+}
+
+// ── Init upload zone ───────────────────────────────────────────────────────────
+function initUpload() {
+  afficherDocs();
+  initModal();
+
+  const input = document.getElementById('file-input');
+  const zone  = document.getElementById('upload-zone');
+
+  // Le <label for="file-input"> ouvre nativement le sélecteur de fichier (iOS inclus)
+  input.addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (f) { input.value = ''; ouvrirModal(f); }
+  });
+
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) ouvrirModal(f);
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+chargerDonnees();
+abonnerTempsReel();
+initUpload();
+</script>
+</body>
+</html>

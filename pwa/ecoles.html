@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1F497D">
+<title>PTP — Établissements</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="ptp.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+/* ── Toolbar ──────────────────────────────────────────────────── */
+.toolbar{
+  background:var(--card);border-bottom:1px solid var(--border);
+  padding:10px 16px;display:flex;gap:8px;align-items:center;
+  position:sticky;top:52px;z-index:40;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)
+}
+.search-wrap{flex:1;position:relative}
+.search-wrap input{
+  width:100%;padding:9px 12px 9px 36px;
+  border:1.5px solid var(--border);border-radius:var(--r);
+  font-size:.9em;background:var(--card2);color:var(--text);outline:none;
+  transition:border .15s,box-shadow .15s
+}
+.search-wrap input::placeholder{color:var(--muted)}
+.search-wrap input:focus{border-color:var(--b3);box-shadow:0 0 0 3px var(--b-glow)}
+.si{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.5;pointer-events:none}
+.filter-sel{
+  padding:9px 10px;border:1.5px solid var(--border);border-radius:var(--r);
+  font-size:.86em;background:var(--card2);color:var(--text);
+  cursor:pointer;outline:none;transition:border .15s;font-weight:600
+}
+.filter-sel:focus{border-color:var(--b3)}
+
+/* ── Groups ───────────────────────────────────────────────────── */
+.group{margin-bottom:8px}
+.group-header{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;background:var(--card);
+  border:1px solid var(--border);border-radius:var(--r-lg);
+  cursor:pointer;user-select:none;-webkit-user-select:none;
+  transition:all .15s;box-shadow:var(--sh1)
+}
+.group-header:active{transform:scale(.99)}
+.group.collapsed .table-wrap{display:none}
+.group-prio{
+  width:32px;height:32px;border-radius:10px;
+  background:linear-gradient(135deg,#1e3a8a,#2563eb);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:.82em;font-weight:800;flex-shrink:0;box-shadow:var(--sh-blue)
+}
+.group-title{font-size:.95em;font-weight:800;color:var(--text)}
+.group-sub{font-size:.78em;color:var(--text2);font-weight:400;margin-top:2px}
+.group-count{
+  font-size:.8em;font-weight:700;background:#dbeafe;color:#1e40af;
+  padding:3px 9px;border-radius:var(--r-full)
+}
+@media(prefers-color-scheme:dark){.group-count{background:rgba(59,130,246,.2);color:#93c5fd}}
+.group-arrow{font-size:.85em;color:var(--muted);transition:transform .25s ease}
+.group.collapsed .group-arrow{transform:rotate(-90deg)}
+
+/* ── Table ────────────────────────────────────────────────────── */
+.table-wrap{
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+  border:1px solid var(--border);border-top:none;
+  border-radius:0 0 var(--r-lg) var(--r-lg)
+}
+table{width:100%;border-collapse:collapse;min-width:540px}
+thead th{
+  padding:10px 12px;font-size:.76em;font-weight:800;color:var(--text2);
+  text-align:left;background:var(--card2);border-bottom:2px solid var(--border);
+  white-space:nowrap;text-transform:uppercase;letter-spacing:.04em
+}
+tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;background:var(--card)}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#eff6ff}
+@media(prefers-color-scheme:dark){tbody tr:hover{background:rgba(59,130,246,.07)}}
+td{padding:12px 12px;font-size:.88em;vertical-align:middle;color:var(--text)}
+
+/* ── Checkbox ─────────────────────────────────────────────────── */
+.cb{
+  width:26px;height:26px;border-radius:8px;border:2px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:all .2s cubic-bezier(.34,1.56,.64,1);
+  flex-shrink:0;margin:auto;font-size:14px;background:var(--card)
+}
+.cb.checked{
+  background:linear-gradient(135deg,#059669,#10b981);
+  border-color:#059669;color:#fff;
+  box-shadow:0 2px 8px rgba(5,150,105,.4);transform:scale(1.08)
+}
+
+/* ── Cellules ─────────────────────────────────────────────────── */
+.etab-name{font-weight:700;line-height:1.3;color:var(--text)}
+.etab-univ{font-size:.8em;color:var(--text2);margin-top:2px}
+.loc-city{font-weight:600;color:var(--text)}
+.loc-reg{font-size:.8em;color:var(--text2);margin-top:1px}
+.tel-link{white-space:nowrap;color:#1d4ed8;text-decoration:none;font-weight:600}
+.tel-link:hover{text-decoration:underline}
+@media(prefers-color-scheme:dark){.tel-link{color:#60a5fa}}
+
+/* ── Date chip ────────────────────────────────────────────────── */
+.date-chip{display:inline-block;padding:3px 10px;border-radius:var(--r-full);font-size:.78em;font-weight:700;white-space:nowrap}
+.date-red{background:#fee2e2;color:#991b1b}
+.date-orange{background:#fef3c7;color:#92400e}
+.date-green{background:#dcfce7;color:#166534}
+@media(prefers-color-scheme:dark){
+  .date-red{background:rgba(248,113,113,.15);color:#fca5a5}
+  .date-orange{background:rgba(251,191,36,.15);color:#fcd34d}
+  .date-green{background:rgba(34,197,94,.15);color:#86efac}
+}
+
+/* ── Statut badges ────────────────────────────────────────────── */
+.badge{display:inline-block;padding:4px 10px;border-radius:var(--r-full);font-size:.78em;font-weight:700;white-space:nowrap}
+.b-todo{background:#f1f5f9;color:#475569}
+.b-brouillon{background:#fef3c7;color:#92400e}
+.b-contacte{background:#dbeafe;color:#1e40af}
+.b-attente{background:#ede9fe;color:#5b21b6}
+.b-reponse{background:#dcfce7;color:#166534}
+.b-admis{background:#dcfce7;color:#14532d;font-weight:800}
+.b-refuse{background:#fee2e2;color:#991b1b}
+.b-depose{background:#dbeafe;color:#1e3a8a}
+@media(prefers-color-scheme:dark){
+  .b-todo{background:rgba(255,255,255,.09);color:var(--text2)}
+  .b-brouillon{background:rgba(251,191,36,.15);color:#fcd34d}
+  .b-contacte{background:rgba(59,130,246,.18);color:#93c5fd}
+  .b-attente{background:rgba(167,139,250,.15);color:#c4b5fd}
+  .b-reponse,.b-admis{background:rgba(34,197,94,.15);color:#86efac}
+  .b-refuse{background:rgba(248,113,113,.15);color:#fca5a5}
+  .b-depose{background:rgba(59,130,246,.12);color:#93c5fd}
+}
+
+/* ── Action buttons ───────────────────────────────────────────── */
+.act-btn{
+  display:inline-flex;align-items:center;padding:6px 11px;
+  border-radius:var(--r-sm);border:none;font-size:.82em;font-weight:700;
+  cursor:pointer;text-decoration:none;transition:all .12s
+}
+.act-btn:active{transform:scale(.94)}
+.act-mail{background:#dbeafe;color:#1e40af}
+.act-tel{background:#dcfce7;color:#166534}
+@media(prefers-color-scheme:dark){
+  .act-mail{background:rgba(59,130,246,.18);color:#93c5fd}
+  .act-tel{background:rgba(34,197,94,.15);color:#86efac}
+}
+
+/* ── Email column ─────────────────────────────────────────────── */
+.mail-link{
+  color:#1d4ed8;text-decoration:none;font-weight:600;font-size:.82em;
+  display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+.mail-link:hover{text-decoration:underline}
+@media(prefers-color-scheme:dark){.mail-link{color:#60a5fa}}
+
+/* ── Mail section dans la sheet ───────────────────────────────── */
+.mail-section{
+  background:var(--card2);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:14px;margin-bottom:14px;
+}
+.mail-section .mail-addr{
+  font-size:.85em;font-weight:700;color:#1d4ed8;word-break:break-all;
+  margin-bottom:10px;display:flex;align-items:flex-start;gap:8px
+}
+@media(prefers-color-scheme:dark){.mail-section .mail-addr{color:#60a5fa}}
+.mail-section .mail-copy{
+  font-size:.72em;background:none;border:1px solid var(--border);
+  border-radius:var(--r-sm);padding:3px 8px;cursor:pointer;
+  color:var(--text2);flex-shrink:0;font-weight:600;transition:all .12s
+}
+.mail-section .mail-copy:active{background:var(--card);transform:scale(.95)}
+.mail-template{
+  background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);
+  padding:10px 12px;font-size:.78em;color:var(--text2);line-height:1.6;
+  margin-bottom:10px;white-space:pre-wrap;font-family:inherit;max-height:120px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch
+}
+.mail-send-btn{
+  width:100%;padding:11px;border:none;border-radius:var(--r);cursor:pointer;
+  font-size:.9em;font-weight:700;color:#fff;
+  background:linear-gradient(135deg,#1d4ed8,#2563eb);
+  box-shadow:0 3px 10px rgba(37,99,235,.3);transition:all .15s
+}
+.mail-send-btn:active{transform:scale(.98);opacity:.9}
+.mail-no-email{
+  font-size:.86em;color:var(--muted);text-align:center;padding:8px 0
+}
+.loading{text-align:center;padding:60px 20px;color:var(--muted)}
+.spinner{width:34px;height:34px;border:3px solid var(--border);
+  border-top-color:var(--b3);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-row">
+    <h1>🏫 Établissements</h1>
+    <button class="sync-btn" id="sync-btn">🔄 Sync</button>
+  </div>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <div class="search-wrap">
+    <span class="si">🔍</span>
+    <input type="search" id="search" placeholder="Rechercher…">
+  </div>
+  <select class="filter-sel" id="filtre-statut">
+    <option value="all">Tous</option>
+    <option value="À contacter">À contacter</option>
+    <option value="Brouillon prêt">Brouillons</option>
+    <option value="Contacté">Contactés</option>
+    <option value="En attente">En attente</option>
+    <option value="Réponse reçue">Réponses</option>
+    <option value="Admis">Admis</option>
+  </select>
+</div>
+
+<!-- Contenu -->
+<div class="scroll-content">
+  <div class="loading" id="loading"><div class="spinner"></div><p>Chargement…</p></div>
+  <div id="content" style="display:none"></div>
+  <div class="empty" id="empty" style="display:none">Aucun établissement trouvé</div>
+</div>
+
+<!-- Bottom nav -->
+<nav class="bottom-nav">
+  <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Tableau de bord</a>
+  <a href="ecoles.html" class="nav-item active"><span class="nav-icon">🏫</span>Établissements</a>
+  <a href="documents.html" class="nav-item"><span class="nav-icon">📄</span>Documents</a>
+</nav>
+
+<!-- Bottom sheet -->
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-head">
+      <div class="sh-name" id="sh-nom"></div>
+      <div class="sh-sub" id="sh-sub"></div>
+    </div>
+    <div class="sh-body">
+      <div class="sh-lbl">Informations</div>
+      <div id="sh-info"></div>
+
+      <div class="sh-lbl">✉️ Contacter par email</div>
+      <div class="mail-section" id="sh-mail-section">
+        <div id="sh-mail-content"></div>
+      </div>
+
+      <div class="sh-lbl">Mettre à jour le statut</div>
+      <div class="status-grid">
+        <div class="so" data-v="Brouillon prêt">📨 Brouillon</div>
+        <div class="so" data-v="Contacté">✅ Contacté</div>
+        <div class="so" data-v="En attente">⏳ En attente</div>
+        <div class="so" data-v="Réponse reçue">📬 Réponse reçue</div>
+        <div class="so" data-v="Dossier déposé">📁 Dossier déposé</div>
+        <div class="so" data-v="Admis">🎉 Admis</div>
+        <div class="so" data-v="Refusé">❌ Refusé</div>
+        <div class="so" data-v="À contacter">○ À contacter</div>
+      </div>
+      <div class="sh-lbl">Notes</div>
+      <textarea class="notes" id="sh-notes" placeholder="Ex : Entretien prévu le 15/04…"></textarea>
+      <button class="save-btn" id="save-btn">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL      = 'https://bgfzucxocpwjjvimxsbk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnZnp1Y3hvY3B3amp2aW14c2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNDE3MjEsImV4cCI6MjA4ODkxNzcyMX0.bCPVzXc0QJKvjcYqWp4hdAbX6CigYa5Gc_la5QMSG2M';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── Données locales de secours ────────────────────────────────────────────────
+const DATA_LOCAL = [
+  {id:'lpaii_iut_de_nantes',        etablissement:'IUT de Nantes',            ville:'Nantes',       region:'Pays de la Loire',     telephone:'02 40 30 60 00', formation:'LP Automatismes et Informatique Industrielle', formation_id:'lpaii', formation_priorite:1, universite:'Université de Nantes',                  email_contact:'secretariat.lp@iutnantes.univ-nantes.fr',         lien_candidature:'https://candidatures.iutnantes.univ-nantes.fr',               date_limite:'Mai 2026',   statut:'À contacter'},
+  {id:'lpaii_iut_grenoble_alpes',   etablissement:'IUT Grenoble Alpes',       ville:'Grenoble',     region:'Auvergne-Rhône-Alpes', telephone:'04 76 82 53 00', formation:'LP Automatismes et Informatique Industrielle', formation_id:'lpaii', formation_priorite:1, universite:'Université Grenoble Alpes',               email_contact:'lp-aii@iut.univ-grenoble-alpes.fr',               lien_candidature:'https://ecandidat.univ-grenoble-alpes.fr',                    date_limite:'Avril 2026', statut:'À contacter'},
+  {id:'lpaii_iut_lyon_1',           etablissement:'IUT Lyon 1',               ville:'Lyon',         region:'Auvergne-Rhône-Alpes', telephone:'04 72 69 20 00', formation:'LP Automatismes et Informatique Industrielle', formation_id:'lpaii', formation_priorite:1, universite:'Université Claude Bernard Lyon 1',         email_contact:'lp-geii@iut.univ-lyon1.fr',                       lien_candidature:'https://iut.univ-lyon1.fr/candidature',                       date_limite:'Mai 2026',   statut:'À contacter'},
+  {id:'lpaii_iut_paris_saclay',     etablissement:'IUT Paris-Saclay (Orsay)', ville:'Orsay',        region:'Île-de-France',        telephone:'01 69 15 60 00', formation:'LP Automatismes et Informatique Industrielle', formation_id:'lpaii', formation_priorite:1, universite:'Université Paris-Saclay',                  email_contact:'geii@iut-orsay.universite-paris-saclay.fr',       lien_candidature:'https://ecandidat.universite-paris-saclay.fr',                date_limite:'Avril 2026', statut:'À contacter'},
+  {id:'lpaii_iut_de_bordeaux',      etablissement:'IUT de Bordeaux',          ville:'Bordeaux',     region:'Nouvelle-Aquitaine',   telephone:'05 57 12 20 00', formation:'LP Automatismes et Informatique Industrielle', formation_id:'lpaii', formation_priorite:1, universite:'Université de Bordeaux',                   email_contact:'lp-geii@iut.u-bordeaux.fr',                       lien_candidature:'https://ecandidat.u-bordeaux.fr',                             date_limite:'Mai 2026',   statut:'À contacter'},
+  {id:'sarii_iut_cachan',           etablissement:'IUT Cachan (Paris-Saclay)',ville:'Cachan',       region:'Île-de-France',        telephone:'01 41 24 11 00', formation:'LP SARII',                                    formation_id:'sarii', formation_priorite:2, universite:'Université Paris-Saclay',                  email_contact:'sarii@iut-cachan.universite-paris-saclay.fr',     lien_candidature:'https://ecandidat.universite-paris-saclay.fr',                date_limite:'Avril 2026', statut:'À contacter'},
+  {id:'sarii_iut_valenciennes',     etablissement:'IUT de Valenciennes',      ville:'Valenciennes', region:'Hauts-de-France',      telephone:'03 27 51 73 10', formation:'LP SARII',                                    formation_id:'sarii', formation_priorite:2, universite:'Univ. Polytechnique Hauts-de-France',      email_contact:'lp-sarii@uphf.fr',                                lien_candidature:'https://ecandidat.uphf.fr',                                   date_limite:'Mai 2026',   statut:'À contacter'},
+  {id:'sarii_iut_rennes',           etablissement:'IUT de Rennes',            ville:'Rennes',       region:'Bretagne',             telephone:'02 23 23 38 23', formation:'LP SARII',                                    formation_id:'sarii', formation_priorite:2, universite:'Université de Rennes 1',                   email_contact:'lp-sarii@univ-rennes1.fr',                        lien_candidature:'https://ecandidat.univ-rennes1.fr',                           date_limite:'Mai 2026',   statut:'À contacter'},
+  {id:'ia_iut_bordeaux',            etablissement:'IUT de Bordeaux',          ville:'Bordeaux',     region:'Nouvelle-Aquitaine',   telephone:'05 57 12 20 00', formation:"LP IA pour l'Industrie",                      formation_id:'ia',    formation_priorite:3, universite:'Université de Bordeaux',                   email_contact:'lp-ia@iut.u-bordeaux.fr',                         lien_candidature:'https://ecandidat.u-bordeaux.fr',                             date_limite:'Mai 2026',   statut:'À contacter'},
+  {id:'ia_iut_valenciennes',        etablissement:'IUT de Valenciennes',      ville:'Valenciennes', region:'Hauts-de-France',      telephone:'03 27 51 73 10', formation:"LP IA pour l'Industrie",                      formation_id:'ia',    formation_priorite:3, universite:'Univ. Polytechnique Hauts-de-France',      email_contact:'lp-ia@uphf.fr',                                   lien_candidature:'https://ecandidat.uphf.fr',                                   date_limite:'Mai 2026',   statut:'À contacter'},
+  {id:'cyber_iut_valenciennes',     etablissement:'IUT de Valenciennes',      ville:'Valenciennes', region:'Hauts-de-France',      telephone:'03 27 51 73 10', formation:'LP Cybersécurité OT',                         formation_id:'cyber', formation_priorite:4, universite:'Univ. Polytechnique Hauts-de-France',      email_contact:'lp-cyber@uphf.fr',                                lien_candidature:'https://ecandidat.uphf.fr',                                   date_limite:'Avril 2026', statut:'À contacter'},
+  {id:'cyber_imt_nord',             etablissement:'IMT Nord Europe',          ville:'Douai',        region:'Hauts-de-France',      telephone:'03 27 71 22 22', formation:'LP Cybersécurité OT',                         formation_id:'cyber', formation_priorite:4, universite:'IMT Nord Europe',                          email_contact:'admissions@imt-nord-europe.fr',                   lien_candidature:'https://imt-nord-europe.fr/formations/candidature',           date_limite:'Avril 2026', statut:'À contacter'},
+  {id:'elec_iut_cachan',            etablissement:'IUT Cachan (Paris-Saclay)',ville:'Cachan',       region:'Île-de-France',        telephone:'01 41 24 11 00', formation:'LP Électronique de Puissance',                 formation_id:'elec',  formation_priorite:5, universite:'Université Paris-Saclay',                  email_contact:'lp-epce@iut-cachan.universite-paris-saclay.fr',   lien_candidature:'https://ecandidat.universite-paris-saclay.fr',                date_limite:'Avril 2026', statut:'À contacter'},
+  {id:'elec_iut_grenoble',          etablissement:'IUT Grenoble Alpes',       ville:'Grenoble',     region:'Auvergne-Rhône-Alpes', telephone:'04 76 82 53 00', formation:'LP Électronique de Puissance',                 formation_id:'elec',  formation_priorite:5, universite:'Université Grenoble Alpes',               email_contact:'lp-epce@iut.univ-grenoble-alpes.fr',              lien_candidature:'https://ecandidat.univ-grenoble-alpes.fr',                    date_limite:'Mai 2026',   statut:'À contacter'},
+];
+
+const FORM_INFO = {
+  lpaii: {short:'LP AII', nom:'LP Automatismes et Informatique Industrielle', emoji:'⚙️'},
+  sarii: {short:'LP SARII', nom:'LP SARII — Systèmes Automatisés, Réseaux, Info. Industrielle', emoji:'📡'},
+  ia:    {short:'LP IA Industrie', nom:"LP IA pour l'Industrie / Data Industrie 4.0", emoji:'🤖'},
+  cyber: {short:'LP Cyber OT', nom:'LP Cybersécurité des Systèmes Industriels (OT)', emoji:'🔒'},
+  elec:  {short:'LP Élec Puissance', nom:"LP Électronique de Puissance & Conversion d'Énergie", emoji:'⚡'},
+};
+
+const BADGE = {
+  'À contacter':'b-todo','Brouillon prêt':'b-brouillon','Contacté':'b-contacte',
+  'En attente':'b-attente','Réponse reçue':'b-reponse','Dossier déposé':'b-depose',
+  'Admis':'b-admis','Refusé':'b-refuse',
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let ecoles = [];        // toutes les écoles (fusionnées)
+let ecoleActive = null; // école ouverte dans la sheet
+
+// ── Chargement ─────────────────────────────────────────────────────────────────
+async function chargerDonnees() {
+  document.getElementById('sync-btn').textContent = '⏳';
+  try {
+    const { data, error } = await sb
+      .from('schools_tracking').select('*')
+      .order('formation_priorite').order('etablissement');
+
+    if (!error && data && data.length > 0) {
+      // Enrichir avec téléphones depuis DATA_LOCAL si absents
+      ecoles = data.map(row => {
+        const loc = DATA_LOCAL.find(l => l.id === row.id);
+        return {
+          ...row,
+          telephone:     row.telephone     || (loc && loc.telephone)     || '',
+          email_contact: row.email_contact || (loc && loc.email_contact) || '',
+        };
+      });
+      localStorage.setItem('ptp_ecoles_cache', JSON.stringify({ecoles, ts: Date.now()}));
+    } else { throw new Error('Données Supabase vides ou erreur'); }
+  } catch {
+    const c = localStorage.getItem('ptp_ecoles_cache');
+    ecoles = c ? JSON.parse(c).ecoles : DATA_LOCAL;
+  }
+  // Fusionner mises à jour locales
+  const lu = JSON.parse(localStorage.getItem('ptp_local_updates') || '{}');
+  ecoles = ecoles.map(e => ({ ...e, ...(lu[e.id] || {}) }));
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('sync-btn').textContent = '🔄 Sync';
+  filtrer();
+}
+
+// ── Filtre & rendu ─────────────────────────────────────────────────────────────
+function filtrer() {
+  const q  = document.getElementById('search').value.toLowerCase().trim();
+  const st = document.getElementById('filtre-statut').value;
+
+  const filtered = ecoles.filter(e => {
+    if (st !== 'all' && e.statut !== st) return false;
+    if (!q) return true;
+    return (e.etablissement + e.ville + (e.formation||'') + (e.telephone||''))
+           .toLowerCase().includes(q);
+  });
+  render(filtered);
+}
+
+function render(liste) {
+  const content = document.getElementById('content');
+  const empty   = document.getElementById('empty');
+
+  if (liste.length === 0) {
+    content.style.display = 'none';
+    empty.style.display   = 'block';
+    return;
+  }
+  content.style.display = 'block';
+  empty.style.display   = 'none';
+
+  // Grouper par formation_id, trié par priorité
+  const map = {};
+  liste.forEach(e => {
+    const fid = e.formation_id || 'autre';
+    if (!map[fid]) map[fid] = { prio: e.formation_priorite || 99, rows: [] };
+    map[fid].rows.push(e);
+  });
+  const groupes = Object.entries(map).sort((a,b) => a[1].prio - b[1].prio);
+
+  content.innerHTML = groupes.map(([fid, g]) => {
+    const fi   = FORM_INFO[fid] || { short: fid, nom: '', emoji: '🏫' };
+    const nb   = g.rows.filter(e => estContacte(e.statut)).length;
+
+    const lignes = g.rows.map(e => {
+      const st     = e.statut || 'À contacter';
+      const check  = estContacte(st);
+      const dcls   = dateCls(e.date_limite);
+      return `<tr data-id="${esc(e.id)}">
+        <td><div class="cb${check?' checked':''}">
+          ${check ? '✓' : ''}
+        </div></td>
+        <td>
+          <div class="etab-name">${esc(e.etablissement)}</div>
+          <div class="etab-univ">${esc(e.universite || e.region || '')}</div>
+        </td>
+        <td>
+          <div class="loc-city">📍 ${esc(e.ville)}</div>
+          <div class="loc-reg">${esc(e.region || '')}</div>
+        </td>
+        <td>${e.telephone
+          ? `<a class="tel-link" href="tel:${e.telephone.replace(/\s/g,'')}"
+               onclick="event.stopPropagation()">${esc(e.telephone)}</a>`
+          : '<span style="color:var(--muted);font-size:.8em">—</span>'}</td>
+        <td>${e.email_contact
+          ? `<a class="mail-link" href="mailto:${esc(e.email_contact)}?subject=${encodeURIComponent('Candidature LP — Dossier de candidature 2026')}"
+               onclick="event.stopPropagation()"
+               title="${esc(e.email_contact)}">${esc(e.email_contact)}</a>`
+          : '<span style="color:var(--muted);font-size:.8em">—</span>'}</td>
+        <td><span class="date-chip ${dcls}">${esc(e.date_limite || '—')}</span></td>
+        <td><span class="badge ${BADGE[st]||'b-todo'}">${esc(st)}</span></td>
+        <td>
+          ${e.email_contact
+            ? `<a class="act-btn act-mail"
+                 href="mailto:${esc(e.email_contact)}?subject=${encodeURIComponent('Candidature LP — Dossier de candidature 2026')}"
+                 onclick="event.stopPropagation()" title="${esc(e.email_contact)}">✉️</a>` : ''}
+          ${e.telephone
+            ? `<a class="act-btn act-tel"
+                 href="tel:${e.telephone.replace(/\s/g,'')}"
+                 onclick="event.stopPropagation()">📞</a>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="group" id="grp-${fid}">
+      <div class="group-header" data-grp="${fid}">
+        <div class="group-prio">${g.prio}</div>
+        <div style="flex:1;min-width:0">
+          <div class="group-title">${fi.emoji} ${fi.short}</div>
+          <div class="group-sub">${fi.nom}</div>
+        </div>
+        <div class="group-count">${nb}/${g.rows.length}</div>
+        <div class="group-arrow">▾</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:40px">✓</th>
+            <th>Établissement</th>
+            <th>Localisation</th>
+            <th>Téléphone</th>
+            <th>Email</th>
+            <th>Date limite</th>
+            <th>Statut</th>
+            <th>Actions</th>
+          </tr></thead>
+          <tbody>${lignes}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function estContacte(st) {
+  return ['Contacté','En attente','Réponse reçue','Dossier déposé','Admis'].includes(st);
+}
+function dateCls(dl) {
+  if (!dl) return 'date-green';
+  const m = dl.toLowerCase();
+  if (m.includes('mars') || m.includes('avril')) return 'date-red';
+  if (m.includes('mai'))  return 'date-orange';
+  return 'date-green';
+}
+function esc(s) {
+  return String(s||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Délégation d'événements (pas d'onclick inline) ─────────────────────────────
+document.getElementById('content').addEventListener('click', e => {
+  // Toggle groupe
+  const grpBtn = e.target.closest('[data-grp]');
+  if (grpBtn) {
+    document.getElementById('grp-' + grpBtn.dataset.grp).classList.toggle('collapsed');
+    return;
+  }
+  // Click sur la case à cocher
+  const cb = e.target.closest('.cb');
+  if (cb) {
+    const tr = cb.closest('tr');
+    if (tr) { toggleCheck(tr.dataset.id); return; }
+  }
+  // Click sur la ligne (ouvrir sheet)
+  const tr = e.target.closest('tr[data-id]');
+  if (tr) ouvrirSheet(tr.dataset.id);
+});
+
+document.getElementById('search').addEventListener('input', filtrer);
+document.getElementById('filtre-statut').addEventListener('change', filtrer);
+document.getElementById('sync-btn').addEventListener('click', chargerDonnees);
+
+// ── Toggle case à cocher ────────────────────────────────────────────────────────
+function toggleCheck(id) {
+  const e       = ecoles.find(x => x.id === id);
+  if (!e) return;
+  const newSt   = estContacte(e.statut) ? 'À contacter' : 'Contacté';
+  sauvegarderLocal(id, newSt, e.notes || '');
+  e.statut = newSt;
+  filtrer();
+  toast(newSt === 'Contacté' ? '✅ Marqué contacté' : '○ Remis à contacter');
+}
+
+// ── Bottom sheet ───────────────────────────────────────────────────────────────
+function ouvrirSheet(id) {
+  const e = ecoles.find(x => x.id === id);
+  if (!e) return;
+  ecoleActive = e;
+
+  document.getElementById('sh-nom').textContent = e.etablissement;
+  document.getElementById('sh-sub').textContent = `${e.ville} · ${(e.formation||'').substring(0,55)}`;
+  document.getElementById('sh-notes').value = e.notes || '';
+
+  document.getElementById('sh-info').innerHTML = [
+    e.universite  ? `<div class="sh-row">🏛️ <span>${esc(e.universite)}</span></div>` : '',
+    e.ville       ? `<div class="sh-row">📍 <span>${esc(e.ville)}, ${esc(e.region||'')}</span></div>` : '',
+    e.telephone   ? `<div class="sh-row">📞 <a href="tel:${e.telephone.replace(/\s/g,'')}">${esc(e.telephone)}</a></div>` : '',
+    e.date_limite ? `<div class="sh-row">📅 Date limite : <strong>${esc(e.date_limite)}</strong></div>` : '',
+    e.lien_candidature ? `<div class="sh-row">🔗 <a href="${esc(e.lien_candidature)}" target="_blank">Lien candidature ↗</a></div>` : '',
+  ].join('');
+
+  // Section mail
+  const sujet = `Candidature LP — Dossier de candidature 2026`;
+  const corps = `Bonjour,\n\nJe me permets de vous contacter concernant votre ${esc(e.formation||'formation')} proposée à l'${esc(e.etablissement)}.\n\nActuellement en 2ème année de BTS CIEL (Cybersécurité, Informatique et réseaux, ÉLectronique), je souhaite poursuivre mes études en licence professionnelle dans votre établissement à la rentrée 2026.\n\nPourriez-vous m'indiquer les modalités de candidature et si vous avez des disponibilités pour un entretien ?\n\nJe reste disponible pour tout renseignement complémentaire.\n\nCordialement,\nBENETT`;
+
+  if (e.email_contact) {
+    const mailtoHref = `mailto:${encodeURIComponent(e.email_contact)}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
+    document.getElementById('sh-mail-content').innerHTML = `
+      <div class="mail-addr">
+        <span style="flex:1;word-break:break-all">${esc(e.email_contact)}</span>
+        <button class="mail-copy" data-email="${esc(e.email_contact)}" onclick="copierMail(this.dataset.email)">Copier</button>
+      </div>
+      <div class="mail-template">${esc(corps)}</div>
+      <a class="mail-send-btn" href="${esc(mailtoHref)}">✉️ Ouvrir dans l'application mail</a>
+    `;
+  } else {
+    document.getElementById('sh-mail-content').innerHTML =
+      '<p class="mail-no-email">Aucun email disponible pour cet établissement</p>';
+  }
+
+  document.querySelectorAll('.so').forEach(o =>
+    o.classList.toggle('sel', o.dataset.v === e.statut)
+  );
+
+  document.getElementById('overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function fermerSheet() {
+  document.getElementById('overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Clic overlay = fermer
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('overlay')) fermerSheet();
+});
+
+// Sélection statut
+document.querySelectorAll('.so').forEach(o =>
+  o.addEventListener('click', () => {
+    document.querySelectorAll('.so').forEach(x => x.classList.remove('sel'));
+    o.classList.add('sel');
+  })
+);
+
+// Sauvegarder
+document.getElementById('save-btn').addEventListener('click', () => {
+  if (!ecoleActive) return;
+  const sel    = document.querySelector('.so.sel');
+  const statut = sel ? sel.dataset.v : ecoleActive.statut;
+  const notes  = document.getElementById('sh-notes').value;
+  sauvegarderLocal(ecoleActive.id, statut, notes);
+  ecoleActive.statut = statut;
+  ecoleActive.notes  = notes;
+  fermerSheet();
+  filtrer();
+  toast('💾 Statut enregistré');
+});
+
+// ── Persistance locale ─────────────────────────────────────────────────────────
+function sauvegarderLocal(id, statut, notes) {
+  const u = JSON.parse(localStorage.getItem('ptp_local_updates') || '{}');
+  u[id] = { statut, notes, date_derniere_action: new Date().toISOString() };
+  localStorage.setItem('ptp_local_updates', JSON.stringify(u));
+}
+
+// ── Copier email ────────────────────────────────────────────────────────────────
+function copierMail(addr) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(addr).then(() => toast('📋 Email copié !'));
+  } else {
+    const el = document.createElement('input');
+    el.value = addr;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    toast('📋 Email copié !');
+  }
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+function toast(msg, d = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), d);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+sb.channel('ecoles-rt')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'schools_tracking' }, chargerDonnees)
+  .subscribe();
+
+chargerDonnees();
+</script>
+</body>
+</html>
