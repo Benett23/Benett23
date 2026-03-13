@@ -254,6 +254,14 @@ html, body { height: 100%; background: var(--page-bg); color: var(--text); font-
 .modal-btns button { padding:13px; border-radius:12px; font-size:.9em; font-weight:600; cursor:pointer; }
 .btn-cancel { flex:1; border:1px solid var(--border); background:none; color:var(--text); }
 .btn-send { flex:2; border:none; background:var(--blue); color:white; }
+/* ── Toast ───────────────────────────────────────────────────── */
+.toast {
+  position:fixed; bottom:calc(80px + var(--safe-bottom)); left:50%; transform:translateX(-50%) translateY(20px);
+  background:#222; color:#fff; padding:10px 18px; border-radius:12px;
+  font-size:.85em; font-weight:500; z-index:300; opacity:0;
+  transition:opacity .2s, transform .2s; pointer-events:none; white-space:nowrap;
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
 /* ── Notification banner ─────────────────────────────────────── */
 .notif-banner {
@@ -350,12 +358,12 @@ html, body { height: 100%; background: var(--page-bg); color: var(--text); font-
         📎 Mes documents
         <span id="docs-count"></span>
       </div>
-      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+      <div class="upload-zone" id="upload-zone">
         <span class="uz-icon">⬆️</span>
         <strong>Ajouter un document</strong><br>
         CV, lettre, diplôme… (PDF, DOCX, JPG)<br>
         <small>Glisser-déposer ou cliquer</small>
-        <input type="file" id="file-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple>
+        <input type="file" id="file-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
       </div>
       <div class="upload-progress" id="upload-progress"><div class="upload-progress-bar"></div></div>
       <div id="docs-uploaded"></div>
@@ -457,6 +465,9 @@ html, body { height: 100%; background: var(--page-bg); color: var(--text); font-
 
     <div style="height:10px"></div>
   </div><!-- /content -->
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
 
 <!-- Modal catégorie document -->
 <div class="modal-overlay" id="upload-modal" style="display:none">
@@ -666,6 +677,15 @@ function abonnerTempsReel() {
     .subscribe();
 }
 
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, duree = 2800) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), duree);
+}
+
 // ── Gestion documents ─────────────────────────────────────────────────────────
 const DOCS_KEY = 'ptp_documents_v2';
 const CAT_LABELS = { cv:'CV', lettre:'Lettre de motivation', diplome:'Diplôme / Relevé', autre:'Autre' };
@@ -746,18 +766,21 @@ async function supprimerDoc(id) {
 async function envoyerFichier(fichier, cat) {
   const prog = document.getElementById('upload-progress');
   prog.style.display = 'block';
+  toast('⏳ Envoi en cours…', 10000);
 
   const meta = { id: uid(), nom: fichier.name, type: fichier.type, taille: fichier.size, cat, date: Date.now(), url: null, chemin: null, b64: null };
 
   // Tenter Supabase Storage
   if (supabaseClient) {
-    const chemin = `${cat}/${meta.id}_${fichier.name}`;
-    const { error } = await supabaseClient.storage.from('documents').upload(chemin, fichier, { contentType: fichier.type, upsert: false });
-    if (!error) {
-      const { data: urlData } = supabaseClient.storage.from('documents').getPublicUrl(chemin);
-      meta.url = urlData.publicUrl;
-      meta.chemin = chemin;
-    }
+    try {
+      const chemin = `${cat}/${meta.id}_${fichier.name}`;
+      const { error } = await supabaseClient.storage.from('documents').upload(chemin, fichier, { contentType: fichier.type, upsert: false });
+      if (!error) {
+        const { data: urlData } = supabaseClient.storage.from('documents').getPublicUrl(chemin);
+        meta.url = urlData.publicUrl;
+        meta.chemin = chemin;
+      }
+    } catch(e) { /* fallback local */ }
   }
 
   // Fallback base64 locale si pas d'URL cloud
@@ -771,6 +794,7 @@ async function envoyerFichier(fichier, cat) {
   saveMeta(liste);
   prog.style.display = 'none';
   afficherDocs();
+  toast(meta.url ? `✅ ${fichier.name} enregistré dans le cloud` : `💾 ${fichier.name} sauvegardé localement`);
 }
 
 // ── Modal catégorie ───────────────────────────────────────────────────────────
@@ -818,17 +842,27 @@ function initUpload() {
   initModal();
 
   const input = document.getElementById('file-input');
-  input.addEventListener('change', e => {
-    if (e.target.files[0]) ouvrirModal(e.target.files[0]);
+  const zone  = document.getElementById('upload-zone');
+
+  // Ouvrir le sélecteur de fichier au clic sur la zone
+  zone.addEventListener('click', e => {
+    if (e.target === input) return; // éviter double déclenchement
+    input.value = '';               // reset pour permettre re-sélection du même fichier
+    input.click();
   });
 
-  const zone = document.getElementById('upload-zone');
-  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  input.addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (f) ouvrirModal(f);
+  });
+
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
   zone.addEventListener('drop', e => {
     e.preventDefault();
     zone.classList.remove('drag-over');
-    if (e.dataTransfer.files[0]) ouvrirModal(e.dataTransfer.files[0]);
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) ouvrirModal(f);
   });
 }
 
