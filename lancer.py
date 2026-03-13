@@ -186,7 +186,7 @@ def menu():
   [1] 📄  Générer les documents  (lettres, tableaux Excel)       ~30 sec
   [2] ✉️   Rédiger les brouillons d'emails pour tous les IUT      ~1 min
   [3] 📨  Envoyer les emails aux établissements (Gmail)
-  [4] 📡  Synchroniser l'application mobile                      ~10 sec
+  [4] 📡  Initialiser / Synchroniser l'application mobile        ~10 sec
   [5] 🚀  Workflow complet avec Claude AI (tous les modes)       ~30 min
   [Q] 🚪  Quitter
 """)
@@ -201,7 +201,8 @@ def menu():
         os.system(f"{sys.executable} envoyer_emails.py")
         return  # envoyer_emails.py a son propre menu/boucle
     elif choix == '4':
-        synchroniser_mobile()
+        os.system(f"{sys.executable} initialiser_supabase.py")
+        return
     elif choix == '5':
         lancer_complet()
     elif choix == 'q':
