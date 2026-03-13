@@ -413,10 +413,10 @@ const SUPABASE_URL = 'https://bgfzucxocpwjjvimxsbk.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnZnp1Y3hvY3B3amp2aW14c2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNDE3MjEsImV4cCI6MjA4ODkxNzcyMX0.bCPVzXc0QJKvjcYqWp4hdAbX6CigYa5Gc_la5QMSG2M';
 const ONESIGNAL_APP_ID = '58577427-d872-46db-8b38-0ce4f497c80c';
 
-let supabase = null;
+let supabaseClient = null;
 
 if (SUPABASE_URL && SUPABASE_URL !== '') {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 // ── OneSignal init ────────────────────────────────────────────────────────────
@@ -449,7 +449,7 @@ async function chargerDonnees(forceRefresh = false) {
   btn.textContent = '⏳';
 
   try {
-    if (supabase) {
+    if (supabaseClient) {
       const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 5000)
       );
@@ -469,7 +469,7 @@ async function chargerDonnees(forceRefresh = false) {
 }
 
 async function chargerDepuisSupabase() {
-  const { data: ecoles, error } = await supabase
+  const { data: ecoles, error } = await supabaseClient
     .from('schools_tracking')
     .select('*')
     .order('formation_priorite', { ascending: true });
@@ -570,8 +570,8 @@ if ('serviceWorker' in navigator) {
 
 // ── Supabase real-time subscription ──────────────────────────────────────────
 function abonnerTempsReel() {
-  if (!supabase) return;
-  supabase
+  if (!supabaseClient) return;
+  supabaseClient
     .channel('schools-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'schools_tracking' }, () => {
       chargerDonnees();
