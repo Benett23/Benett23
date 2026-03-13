@@ -215,10 +215,7 @@ html, body { height: 100%; background: var(--page-bg); color: var(--text); font-
   color: var(--grey);
   font-size: .88em;
 }
-.upload-zone:hover, .upload-zone.drag-over {
-  background: var(--blue-pale);
-  border-color: var(--blue);
-}
+.upload-zone:hover, .upload-zone.drag-over { background: var(--blue-pale); border-color: var(--blue); }
 .upload-zone .uz-icon { font-size: 2em; display: block; margin-bottom: 6px; }
 .upload-zone strong { color: var(--blue); }
 .upload-zone input { display: none; }
@@ -230,7 +227,7 @@ html, body { height: 100%; background: var(--page-bg); color: var(--text); font-
 .doc-file-icon { font-size: 1.8em; flex-shrink: 0; }
 .doc-info { flex: 1; min-width: 0; }
 .doc-name { font-size: .88em; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.doc-meta { font-size: .74em; color: var(--grey); margin-top: 2px; }
+.doc-meta { font-size: .74em; color: var(--grey); margin-top: 2px; display:flex; align-items:center; gap:6px; }
 .doc-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .btn-dl, .btn-del {
   border: none; border-radius: 10px; padding: 6px 10px;
@@ -239,6 +236,24 @@ html, body { height: 100%; background: var(--page-bg); color: var(--text); font-
 .btn-dl { background: var(--blue-pale); color: var(--blue); }
 .btn-del { background: var(--red-bg); color: var(--red); }
 .upload-empty { padding: 18px 16px; text-align: center; color: var(--grey); font-size: .84em; }
+.badge-cloud { font-size:.68em; background:var(--blue-pale); color:var(--blue); padding:1px 6px; border-radius:8px; font-weight:600; }
+.badge-local { font-size:.68em; background:var(--orange-bg); color:var(--orange); padding:1px 6px; border-radius:8px; font-weight:600; }
+.upload-progress { height:3px; background:var(--border); margin:0 16px 12px; border-radius:4px; overflow:hidden; display:none; }
+.upload-progress-bar { height:100%; background:var(--blue); border-radius:4px; animation:prog-anim 1.2s ease infinite; }
+@keyframes prog-anim { 0%{width:5%} 60%{width:85%} 100%{width:95%} }
+/* ── Modal catégorie ─────────────────────────────────────────── */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:200; display:flex; align-items:flex-end; justify-content:center; }
+.modal-sheet { background:var(--card-bg); border-radius:20px 20px 0 0; padding:24px; width:100%; max-width:480px; padding-bottom:calc(24px + var(--safe-bottom)); }
+.modal-title { font-size:1em; font-weight:700; margin-bottom:4px; }
+.modal-fname { font-size:.8em; color:var(--grey); margin-bottom:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cat-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:20px; }
+.cat-btn { padding:12px 10px; border:2px solid var(--border); border-radius:12px; background:var(--card-bg); font-size:.85em; cursor:pointer; text-align:left; color:var(--text); transition:all .15s; }
+.cat-btn .ci { font-size:1.4em; display:block; margin-bottom:4px; }
+.cat-btn.sel { border-color:var(--blue); background:var(--blue-pale); color:var(--blue); font-weight:600; }
+.modal-btns { display:flex; gap:8px; }
+.modal-btns button { padding:13px; border-radius:12px; font-size:.9em; font-weight:600; cursor:pointer; }
+.btn-cancel { flex:1; border:1px solid var(--border); background:none; color:var(--text); }
+.btn-send { flex:2; border:none; background:var(--blue); color:white; }
 
 /* ── Notification banner ─────────────────────────────────────── */
 .notif-banner {
@@ -342,6 +357,7 @@ html, body { height: 100%; background: var(--page-bg); color: var(--text); font-
         <small>Glisser-déposer ou cliquer</small>
         <input type="file" id="file-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple>
       </div>
+      <div class="upload-progress" id="upload-progress"><div class="upload-progress-bar"></div></div>
       <div id="docs-uploaded"></div>
     </div>
 
@@ -441,6 +457,24 @@ html, body { height: 100%; background: var(--page-bg); color: var(--text); font-
 
     <div style="height:10px"></div>
   </div><!-- /content -->
+
+<!-- Modal catégorie document -->
+<div class="modal-overlay" id="upload-modal" style="display:none">
+  <div class="modal-sheet">
+    <div class="modal-title">Quel type de document ?</div>
+    <div class="modal-fname" id="modal-fname"></div>
+    <div class="cat-grid">
+      <button class="cat-btn sel" data-cat="cv"><span class="ci">📄</span>CV</button>
+      <button class="cat-btn" data-cat="lettre"><span class="ci">✉️</span>Lettre de motivation</button>
+      <button class="cat-btn" data-cat="diplome"><span class="ci">🎓</span>Diplôme / Relevé</button>
+      <button class="cat-btn" data-cat="autre"><span class="ci">📎</span>Autre</button>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="modal-cancel">Annuler</button>
+      <button class="btn-send" id="modal-send">Envoyer ↗</button>
+    </div>
+  </div>
+</div>
 
 </div>
 
@@ -632,128 +666,161 @@ function abonnerTempsReel() {
     .subscribe();
 }
 
-// ── IndexedDB pour documents ──────────────────────────────────────────────────
-const DB_NAME = 'ptp_docs', DB_VER = 1, STORE = 'fichiers';
-let db = null;
+// ── Gestion documents ─────────────────────────────────────────────────────────
+const DOCS_KEY = 'ptp_documents_v2';
+const CAT_LABELS = { cv:'CV', lettre:'Lettre de motivation', diplome:'Diplôme / Relevé', autre:'Autre' };
+const CAT_ICONS  = { cv:'📄', lettre:'✉️', diplome:'🎓', autre:'📎' };
+let _uploadFile = null, _uploadCat = 'cv';
 
-function ouvrirDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = e => e.target.result.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
-    req.onsuccess = e => { db = e.target.result; resolve(db); };
-    req.onerror = () => reject(req.error);
-  });
+function docsMeta() { return JSON.parse(localStorage.getItem(DOCS_KEY) || '[]'); }
+function saveMeta(arr) { localStorage.setItem(DOCS_KEY, JSON.stringify(arr)); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmtSize(b) {
+  if (b < 1024) return b + ' o';
+  if (b < 1048576) return (b/1024).toFixed(0) + ' Ko';
+  return (b/1048576).toFixed(1) + ' Mo';
 }
 
-function sauvegarderFichier(nom, type, taille, data) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).add({ nom, type, taille, date: Date.now(), data });
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-function listerFichiers() {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readonly');
-    const req = tx.objectStore(STORE).getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-function supprimerFichier(id) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).delete(id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-function iconeDoc(type) {
-  if (type.includes('pdf')) return '📕';
-  if (type.includes('word') || type.includes('docx') || type.includes('doc')) return '📘';
-  if (type.includes('image')) return '🖼️';
-  return '📄';
-}
-
-function formatTaille(bytes) {
-  if (bytes < 1024) return bytes + ' o';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' Ko';
-  return (bytes / 1024 / 1024).toFixed(1) + ' Mo';
-}
-
-async function afficherDocs() {
-  const liste = await listerFichiers();
+function afficherDocs() {
+  const liste = docsMeta();
   const container = document.getElementById('docs-uploaded');
   const counter = document.getElementById('docs-count');
-  counter.textContent = liste.length > 0 ? `${liste.length} fichier${liste.length > 1 ? 's' : ''}` : '';
+  counter.textContent = liste.length ? `${liste.length} fichier${liste.length > 1 ? 's' : ''}` : '';
 
-  if (liste.length === 0) {
-    container.innerHTML = '<div class="upload-empty">Aucun document ajouté</div>';
+  if (!liste.length) {
+    container.innerHTML = '<div class="upload-empty">Aucun document — glisse ou clique pour ajouter</div>';
     return;
   }
 
   container.innerHTML = liste.map(f => `
-    <div class="doc-card" id="doc-${f.id}">
-      <span class="doc-file-icon">${iconeDoc(f.type)}</span>
+    <div class="doc-card">
+      <span style="font-size:1.8em;flex-shrink:0">${CAT_ICONS[f.cat] || '📎'}</span>
       <div class="doc-info">
         <div class="doc-name" title="${f.nom}">${f.nom}</div>
-        <div class="doc-meta">${formatTaille(f.taille)} · ${new Date(f.date).toLocaleDateString('fr-FR')}</div>
+        <div class="doc-meta">
+          <span>${fmtSize(f.taille)}</span>
+          <span>·</span>
+          <span>${new Date(f.date).toLocaleDateString('fr-FR')}</span>
+          <span class="${f.url ? 'badge-cloud' : 'badge-local'}">${f.url ? '☁ Cloud' : '💾 Local'}</span>
+        </div>
+        <div style="font-size:.72em;color:var(--grey)">${CAT_LABELS[f.cat] || f.cat}</div>
       </div>
       <div class="doc-actions">
-        <button class="btn-dl" onclick="telechargerDoc(${f.id})">⬇ Ouvrir</button>
-        <button class="btn-del" onclick="supprimerDoc(${f.id})">✕</button>
+        <button class="btn-dl" onclick="ouvrirDoc('${f.id}')">Ouvrir</button>
+        <button class="btn-del" onclick="supprimerDoc('${f.id}')">✕</button>
       </div>
     </div>
   `).join('');
-
-  // Marquer CV comme fait si un fichier avec "cv" dans le nom est présent
-  const aCV = liste.some(f => f.nom.toLowerCase().includes('cv'));
-  if (aCV) {
-    const saved = JSON.parse(localStorage.getItem('ptp_docs_generes') || '[]');
-    if (!saved.includes('cv')) {
-      saved.push('cv');
-      localStorage.setItem('ptp_docs_generes', JSON.stringify(saved));
-    }
-  }
 }
 
-async function telechargerDoc(id) {
-  const tx = db.transaction(STORE, 'readonly');
-  const req = tx.objectStore(STORE).get(id);
-  req.onsuccess = () => {
-    const f = req.result;
-    const blob = new Blob([f.data], { type: f.type });
+function ouvrirDoc(id) {
+  const f = docsMeta().find(d => d.id === id);
+  if (!f) return;
+  if (f.url) {
+    window.open(f.url, '_blank');
+  } else if (f.b64) {
+    // fallback local: reconstruire un blob depuis base64
+    const byteStr = atob(f.b64.split(',')[1] || f.b64);
+    const ab = new Uint8Array(byteStr.length);
+    for (let i = 0; i < byteStr.length; i++) ab[i] = byteStr.charCodeAt(i);
+    const blob = new Blob([ab], { type: f.type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = f.nom; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
+    a.href = url; a.download = f.nom;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+  }
 }
 
 async function supprimerDoc(id) {
-  await supprimerFichier(id);
-  await afficherDocs();
+  const liste = docsMeta();
+  const f = liste.find(d => d.id === id);
+  if (!f) return;
+  if (f.chemin && supabaseClient) {
+    await supabaseClient.storage.from('documents').remove([f.chemin]);
+  }
+  saveMeta(liste.filter(d => d.id !== id));
+  afficherDocs();
 }
 
-async function traiterFichiers(fichiers) {
-  for (const fichier of fichiers) {
-    const buffer = await fichier.arrayBuffer();
-    await sauvegarderFichier(fichier.name, fichier.type, fichier.size, buffer);
+async function envoyerFichier(fichier, cat) {
+  const prog = document.getElementById('upload-progress');
+  prog.style.display = 'block';
+
+  const meta = { id: uid(), nom: fichier.name, type: fichier.type, taille: fichier.size, cat, date: Date.now(), url: null, chemin: null, b64: null };
+
+  // Tenter Supabase Storage
+  if (supabaseClient) {
+    const chemin = `${cat}/${meta.id}_${fichier.name}`;
+    const { error } = await supabaseClient.storage.from('documents').upload(chemin, fichier, { contentType: fichier.type, upsert: false });
+    if (!error) {
+      const { data: urlData } = supabaseClient.storage.from('documents').getPublicUrl(chemin);
+      meta.url = urlData.publicUrl;
+      meta.chemin = chemin;
+    }
   }
-  await afficherDocs();
+
+  // Fallback base64 locale si pas d'URL cloud
+  if (!meta.url) {
+    const reader = new FileReader();
+    meta.b64 = await new Promise(res => { reader.onload = e => res(e.target.result); reader.readAsDataURL(fichier); });
+  }
+
+  const liste = docsMeta();
+  liste.unshift(meta);
+  saveMeta(liste);
+  prog.style.display = 'none';
+  afficherDocs();
+}
+
+// ── Modal catégorie ───────────────────────────────────────────────────────────
+function initModal() {
+  const modal = document.getElementById('upload-modal');
+  const catBtns = modal.querySelectorAll('.cat-btn');
+  _uploadCat = 'cv';
+
+  catBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      catBtns.forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+      _uploadCat = btn.dataset.cat;
+    });
+  });
+
+  document.getElementById('modal-cancel').addEventListener('click', () => {
+    modal.style.display = 'none';
+    _uploadFile = null;
+    document.getElementById('file-input').value = '';
+  });
+
+  document.getElementById('modal-send').addEventListener('click', async () => {
+    if (!_uploadFile) return;
+    modal.style.display = 'none';
+    await envoyerFichier(_uploadFile, _uploadCat);
+    _uploadFile = null;
+    document.getElementById('file-input').value = '';
+  });
+
+  modal.addEventListener('click', e => { if (e.target === modal) { modal.style.display = 'none'; _uploadFile = null; } });
+}
+
+function ouvrirModal(fichier) {
+  _uploadFile = fichier;
+  _uploadCat = 'cv';
+  document.getElementById('upload-modal').querySelectorAll('.cat-btn').forEach((b, i) => b.classList.toggle('sel', i === 0));
+  document.getElementById('modal-fname').textContent = fichier.name;
+  document.getElementById('upload-modal').style.display = 'flex';
 }
 
 // ── Init upload zone ───────────────────────────────────────────────────────────
-async function initUpload() {
-  await ouvrirDB();
-  await afficherDocs();
+function initUpload() {
+  afficherDocs();
+  initModal();
 
   const input = document.getElementById('file-input');
-  input.addEventListener('change', e => traiterFichiers([...e.target.files]));
+  input.addEventListener('change', e => {
+    if (e.target.files[0]) ouvrirModal(e.target.files[0]);
+  });
 
   const zone = document.getElementById('upload-zone');
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
@@ -761,7 +828,7 @@ async function initUpload() {
   zone.addEventListener('drop', e => {
     e.preventDefault();
     zone.classList.remove('drag-over');
-    traiterFichiers([...e.dataTransfer.files]);
+    if (e.dataTransfer.files[0]) ouvrirModal(e.dataTransfer.files[0]);
   });
 }
 
