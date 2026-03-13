@@ -124,12 +124,13 @@
 
 /* ── Upload zone ──────────────────────────────────────────────── */
 .upload-zone{
+  display:block;
   border:2px dashed #93c5fd;border-radius:var(--r-lg);
   padding:30px 16px;text-align:center;cursor:pointer;
-  color:var(--text2);font-size:.9em;transition:all .2s;background:#eff6ff
+  color:#334155;font-size:.92em;transition:all .2s;background:#eff6ff
 }
 @media(prefers-color-scheme:dark){
-  .upload-zone{background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.3);color:var(--text2)}
+  .upload-zone{background:rgba(59,130,246,.09);border-color:rgba(59,130,246,.55);color:var(--text2)}
 }
 .upload-zone:active,.upload-zone.drag{
   border-color:#2563eb;background:#dbeafe;box-shadow:0 0 0 4px rgba(37,99,235,.12)
