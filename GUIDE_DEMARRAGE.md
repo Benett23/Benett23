@@ -18,15 +18,14 @@ cp .env.example .env
 
 ## 2. Configuration (`.env`)
 
-Éditez le fichier `.env` et renseignez :
+Le système utilise `claude` CLI — **aucune clé API Anthropic n'est requise**.
+Assurez-vous d'être authentifié :
 
-### Obligatoire
-```env
-ANTHROPIC_API_KEY=sk-ant-...
+```bash
+claude auth login
 ```
-→ Créer une clé sur : https://console.anthropic.com/settings/keys
 
-### Optionnel (pour l'envoi des débriefs par email)
+### Gmail (débriefs par email)
 ```env
 GMAIL_USER=votre.email@gmail.com
 GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
@@ -36,7 +35,19 @@ DEBRIEF_EMAIL_TO=votre.email@gmail.com
 **Pour obtenir un mot de passe d'application Gmail :**
 1. Activez la double authentification sur votre compte Google
 2. Allez sur : https://myaccount.google.com/apppasswords
-3. Créez un mot de passe pour "Mail"
+3. Créez un mot de passe (ex: nom "Claude")
+4. Copiez les 16 caractères générés (format : `xxxx xxxx xxxx xxxx`)
+
+### Supabase + OneSignal (PWA mobile)
+```env
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_SERVICE_KEY=...
+SUPABASE_ANON_KEY=...
+ONESIGNAL_APP_ID=...
+ONESIGNAL_REST_API_KEY=...
+```
+
+Voir `DEPLOIEMENT_PWA.md` pour les instructions détaillées.
 
 ---
 
