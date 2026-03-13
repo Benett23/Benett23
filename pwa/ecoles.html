@@ -148,7 +148,46 @@ td{padding:12px 12px;font-size:.88em;vertical-align:middle;color:var(--text)}
   .act-tel{background:rgba(34,197,94,.15);color:#86efac}
 }
 
-/* ── Loading / empty ──────────────────────────────────────────── */
+/* ── Email column ─────────────────────────────────────────────── */
+.mail-link{
+  color:#1d4ed8;text-decoration:none;font-weight:600;font-size:.82em;
+  display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+.mail-link:hover{text-decoration:underline}
+@media(prefers-color-scheme:dark){.mail-link{color:#60a5fa}}
+
+/* ── Mail section dans la sheet ───────────────────────────────── */
+.mail-section{
+  background:var(--card2);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:14px;margin-bottom:14px;
+}
+.mail-section .mail-addr{
+  font-size:.85em;font-weight:700;color:#1d4ed8;word-break:break-all;
+  margin-bottom:10px;display:flex;align-items:flex-start;gap:8px
+}
+@media(prefers-color-scheme:dark){.mail-section .mail-addr{color:#60a5fa}}
+.mail-section .mail-copy{
+  font-size:.72em;background:none;border:1px solid var(--border);
+  border-radius:var(--r-sm);padding:3px 8px;cursor:pointer;
+  color:var(--text2);flex-shrink:0;font-weight:600;transition:all .12s
+}
+.mail-section .mail-copy:active{background:var(--card);transform:scale(.95)}
+.mail-template{
+  background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);
+  padding:10px 12px;font-size:.78em;color:var(--text2);line-height:1.6;
+  margin-bottom:10px;white-space:pre-wrap;font-family:inherit;max-height:120px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch
+}
+.mail-send-btn{
+  width:100%;padding:11px;border:none;border-radius:var(--r);cursor:pointer;
+  font-size:.9em;font-weight:700;color:#fff;
+  background:linear-gradient(135deg,#1d4ed8,#2563eb);
+  box-shadow:0 3px 10px rgba(37,99,235,.3);transition:all .15s
+}
+.mail-send-btn:active{transform:scale(.98);opacity:.9}
+.mail-no-email{
+  font-size:.86em;color:var(--muted);text-align:center;padding:8px 0
+}
 .loading{text-align:center;padding:60px 20px;color:var(--muted)}
 .spinner{width:34px;height:34px;border:3px solid var(--border);
   border-top-color:var(--b3);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
@@ -206,6 +245,12 @@ td{padding:12px 12px;font-size:.88em;vertical-align:middle;color:var(--text)}
     <div class="sh-body">
       <div class="sh-lbl">Informations</div>
       <div id="sh-info"></div>
+
+      <div class="sh-lbl">✉️ Contacter par email</div>
+      <div class="mail-section" id="sh-mail-section">
+        <div id="sh-mail-content"></div>
+      </div>
+
       <div class="sh-lbl">Mettre à jour le statut</div>
       <div class="status-grid">
         <div class="so" data-v="Brouillon prêt">📨 Brouillon</div>
@@ -280,7 +325,11 @@ async function chargerDonnees() {
       // Enrichir avec téléphones depuis DATA_LOCAL si absents
       ecoles = data.map(row => {
         const loc = DATA_LOCAL.find(l => l.id === row.id);
-        return { ...row, telephone: row.telephone || (loc && loc.telephone) || '' };
+        return {
+          ...row,
+          telephone:     row.telephone     || (loc && loc.telephone)     || '',
+          email_contact: row.email_contact || (loc && loc.email_contact) || '',
+        };
       });
       localStorage.setItem('ptp_ecoles_cache', JSON.stringify({ecoles, ts: Date.now()}));
     } else { throw 0; }
@@ -355,14 +404,19 @@ function render(liste) {
         <td>${e.telephone
           ? `<a class="tel-link" href="tel:${e.telephone.replace(/\s/g,'')}"
                onclick="event.stopPropagation()">${esc(e.telephone)}</a>`
-          : '<span style="color:var(--grey);font-size:.8em">—</span>'}</td>
+          : '<span style="color:var(--muted);font-size:.8em">—</span>'}</td>
+        <td>${e.email_contact
+          ? `<a class="mail-link" href="mailto:${esc(e.email_contact)}?subject=${encodeURIComponent('Candidature LP — Dossier de candidature 2026')}"
+               onclick="event.stopPropagation()"
+               title="${esc(e.email_contact)}">${esc(e.email_contact)}</a>`
+          : '<span style="color:var(--muted);font-size:.8em">—</span>'}</td>
         <td><span class="date-chip ${dcls}">${esc(e.date_limite || '—')}</span></td>
         <td><span class="badge ${BADGE[st]||'b-todo'}">${esc(st)}</span></td>
         <td>
           ${e.email_contact
             ? `<a class="act-btn act-mail"
-                 href="mailto:${esc(e.email_contact)}?subject=Candidature%20LP%20PTP%202026"
-                 onclick="event.stopPropagation()">✉️</a>` : ''}
+                 href="mailto:${esc(e.email_contact)}?subject=${encodeURIComponent('Candidature LP — Dossier de candidature 2026')}"
+                 onclick="event.stopPropagation()" title="${esc(e.email_contact)}">✉️</a>` : ''}
           ${e.telephone
             ? `<a class="act-btn act-tel"
                  href="tel:${e.telephone.replace(/\s/g,'')}"
@@ -388,6 +442,7 @@ function render(liste) {
             <th>Établissement</th>
             <th>Localisation</th>
             <th>Téléphone</th>
+            <th>Email</th>
             <th>Date limite</th>
             <th>Statut</th>
             <th>Actions</th>
@@ -460,13 +515,31 @@ function ouvrirSheet(id) {
   document.getElementById('sh-notes').value = e.notes || '';
 
   document.getElementById('sh-info').innerHTML = [
-    e.universite  ? `<div class="sh-row">🏛️ <span>${esc(e.universite)}</span></div>`       : '',
+    e.universite  ? `<div class="sh-row">🏛️ <span>${esc(e.universite)}</span></div>` : '',
     e.ville       ? `<div class="sh-row">📍 <span>${esc(e.ville)}, ${esc(e.region||'')}</span></div>` : '',
     e.telephone   ? `<div class="sh-row">📞 <a href="tel:${e.telephone.replace(/\s/g,'')}">${esc(e.telephone)}</a></div>` : '',
-    e.email_contact ? `<div class="sh-row">✉️ <a href="mailto:${esc(e.email_contact)}">${esc(e.email_contact)}</a></div>` : '',
     e.date_limite ? `<div class="sh-row">📅 Date limite : <strong>${esc(e.date_limite)}</strong></div>` : '',
     e.lien_candidature ? `<div class="sh-row">🔗 <a href="${esc(e.lien_candidature)}" target="_blank">Lien candidature ↗</a></div>` : '',
   ].join('');
+
+  // Section mail
+  const sujet = `Candidature LP — Dossier de candidature 2026`;
+  const corps = `Bonjour,\n\nJe me permets de vous contacter concernant votre ${esc(e.formation||'formation')} proposée à l'${esc(e.etablissement)}.\n\nActuellement en 2ème année de BTS CIEL (Cybersécurité, Informatique et réseaux, ÉLectronique), je souhaite poursuivre mes études en licence professionnelle dans votre établissement à la rentrée 2026.\n\nPourriez-vous m'indiquer les modalités de candidature et si vous avez des disponibilités pour un entretien ?\n\nJe reste disponible pour tout renseignement complémentaire.\n\nCordialement,\nBENETT`;
+
+  if (e.email_contact) {
+    const mailtoHref = `mailto:${encodeURIComponent(e.email_contact)}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
+    document.getElementById('sh-mail-content').innerHTML = `
+      <div class="mail-addr">
+        <span style="flex:1;word-break:break-all">${esc(e.email_contact)}</span>
+        <button class="mail-copy" onclick="copierMail('${esc(e.email_contact)}')">Copier</button>
+      </div>
+      <div class="mail-template">${esc(corps)}</div>
+      <a class="mail-send-btn" href="${esc(mailtoHref)}">✉️ Ouvrir dans l'application mail</a>
+    `;
+  } else {
+    document.getElementById('sh-mail-content').innerHTML =
+      '<p class="mail-no-email">Aucun email disponible pour cet établissement</p>';
+  }
 
   document.querySelectorAll('.so').forEach(o =>
     o.classList.toggle('sel', o.dataset.v === e.statut)
@@ -513,6 +586,21 @@ function sauvegarderLocal(id, statut, notes) {
   const u = JSON.parse(localStorage.getItem('ptp_local_updates') || '{}');
   u[id] = { statut, notes, date_derniere_action: new Date().toISOString() };
   localStorage.setItem('ptp_local_updates', JSON.stringify(u));
+}
+
+// ── Copier email ────────────────────────────────────────────────────────────────
+function copierMail(addr) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(addr).then(() => toast('📋 Email copié !'));
+  } else {
+    const el = document.createElement('input');
+    el.value = addr;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    toast('📋 Email copié !');
+  }
 }
 
 // ── Toast ──────────────────────────────────────────────────────────────────────
