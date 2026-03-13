@@ -450,9 +450,11 @@ async function chargerDonnees(forceRefresh = false) {
 
   try {
     if (supabase) {
-      await chargerDepuisSupabase();
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 5000)
+      );
+      await Promise.race([chargerDepuisSupabase(), timeout]);
     } else {
-      // Mode offline / démo : données localStorage
       chargerDepuisLocalStorage();
     }
   } catch (err) {
