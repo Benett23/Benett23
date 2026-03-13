@@ -12,40 +12,21 @@
 <link rel="stylesheet" href="ptp.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
-/* ── Compat aliases ───────────────────────────────────────────── */
-:root{
-  --blue:var(--b3);--blue-pale:var(--b-pale);
-  --green:#059669;--green-bg:#ecfdf5;
-  --orange:#d97706;--orange-bg:#fffbeb;
-  --grey:var(--muted);
-}
-@media(prefers-color-scheme:dark){:root{
-  --green-bg:rgba(5,150,105,.15);--orange-bg:rgba(217,119,6,.15);
-}}
-
 /* ── Tabs ─────────────────────────────────────────────────────── */
 .tabs{
   display:flex;overflow-x:auto;
-  background:rgba(var(--card-rgb,255,255,255),.9);
-  border-bottom:1px solid var(--border);
+  background:var(--card);border-bottom:1px solid var(--border);
   position:sticky;top:52px;z-index:40;-webkit-overflow-scrolling:touch;
-  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  padding:0 6px
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:0 6px
 }
-@media(prefers-color-scheme:dark){.tabs{background:rgba(22,27,34,.9)}}
 .tabs::-webkit-scrollbar{display:none}
 .tab{
-  flex-shrink:0;padding:12px 14px;font-size:.82em;font-weight:600;
-  color:var(--muted);cursor:pointer;position:relative;
+  flex-shrink:0;padding:13px 14px;font-size:.86em;font-weight:600;
+  color:var(--text2);cursor:pointer;position:relative;
   white-space:nowrap;transition:color .2s;border-bottom:2px solid transparent
 }
-.tab.active{color:var(--b3);border-bottom-color:var(--b3)}
-.tab::after{
-  content:'';position:absolute;bottom:0;left:14px;right:14px;
-  height:2px;background:var(--b3);border-radius:2px 2px 0 0;
-  transform:scaleX(0);transition:transform .2s ease
-}
-.tab.active::after{transform:scaleX(1)}
+.tab.active{color:#1d4ed8;border-bottom-color:#2563eb}
+@media(prefers-color-scheme:dark){.tab.active{color:#60a5fa;border-bottom-color:#3b82f6}}
 
 /* ── Layout ───────────────────────────────────────────────────── */
 .scroll{padding-bottom:calc(var(--safe-bottom)+72px)}
@@ -58,101 +39,104 @@
   padding:18px;margin-bottom:14px;
   box-shadow:var(--sh2);border:1px solid var(--border)
 }
-.doc-title{font-size:1.05em;font-weight:800;margin-bottom:5px}
-.doc-desc{font-size:.82em;color:var(--muted);margin-bottom:14px;line-height:1.5}
+.doc-title{font-size:1.05em;font-weight:800;margin-bottom:6px;color:var(--text)}
+.doc-desc{font-size:.86em;color:var(--text2);margin-bottom:14px;line-height:1.5}
 
 /* ── Editor ───────────────────────────────────────────────────── */
 .editor{
   width:100%;min-height:320px;padding:16px;
   border:1.5px solid var(--border);border-radius:var(--r-lg);
-  font-size:.88em;line-height:1.7;
+  font-size:.92em;line-height:1.7;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   background:var(--card2);color:var(--text);
   outline:none;resize:none;transition:border .15s,box-shadow .15s
 }
-.editor:focus{border-color:var(--b3);box-shadow:0 0 0 3px var(--b-glow)}
+.editor:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+@media(prefers-color-scheme:dark){.editor:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.2)}}
 
 /* ── Editor toolbar ───────────────────────────────────────────── */
 .editor-toolbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .et-btn{
-  padding:7px 11px;border:1.5px solid var(--border);border-radius:var(--r-sm);
-  background:var(--card2);color:var(--text);font-size:.82em;
+  padding:7px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);
+  background:var(--card2);color:var(--text);font-size:.85em;
   cursor:pointer;font-weight:700;transition:all .12s
 }
-.et-btn:hover{border-color:var(--b3);color:var(--b3)}
-.et-btn:active{background:var(--b-pale);transform:scale(.96)}
+.et-btn:hover{border-color:#2563eb;color:#1d4ed8}
+.et-btn:active{background:#eff6ff;transform:scale(.96)}
+@media(prefers-color-scheme:dark){
+  .et-btn:hover{border-color:#3b82f6;color:#60a5fa}
+  .et-btn:active{background:rgba(59,130,246,.15)}
+}
 
 /* ── Action buttons ───────────────────────────────────────────── */
 .btn-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
 .btn{
   padding:13px 16px;border-radius:var(--r-lg);border:none;
-  font-size:.9em;font-weight:700;cursor:pointer;flex:1;min-width:120px;
-  transition:all .15s;box-shadow:var(--sh1)
+  font-size:.92em;font-weight:700;cursor:pointer;flex:1;min-width:120px;
+  transition:all .15s
 }
 .btn:active{transform:scale(.97)}
 .btn-primary{
-  background:linear-gradient(135deg,var(--b2),var(--b3));color:#fff;
-  box-shadow:var(--sh-blue)
+  background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;
+  box-shadow:0 4px 14px rgba(37,99,235,.35)
 }
 .btn-secondary{
-  background:var(--card2);color:var(--b3);
-  border:1.5px solid var(--b3)
+  background:var(--card2);color:#1d4ed8;border:1.5px solid #2563eb
 }
-.btn-green{
-  background:linear-gradient(135deg,var(--green),#10b981);color:#fff;
-  box-shadow:0 4px 12px rgba(5,150,105,.3)
+@media(prefers-color-scheme:dark){
+  .btn-secondary{color:#60a5fa;border-color:#3b82f6;background:rgba(59,130,246,.08)}
 }
 
 /* ── Status bar ───────────────────────────────────────────────── */
 .status-bar{
   display:flex;align-items:center;gap:8px;
-  padding:10px 14px;border-radius:var(--r);font-size:.84em;margin-bottom:14px;
-  font-weight:600;border:1px solid transparent
+  padding:10px 14px;border-radius:var(--r);font-size:.86em;margin-bottom:14px;
+  font-weight:600
 }
-.status-bar.ok{
-  background:var(--green-bg);color:var(--green);
-  border-color:rgba(5,150,105,.2)
-}
-.status-bar.pending{
-  background:var(--orange-bg);color:var(--orange);
-  border-color:rgba(217,119,6,.2)
+.status-bar.ok{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
+.status-bar.pending{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+@media(prefers-color-scheme:dark){
+  .status-bar.ok{background:rgba(34,197,94,.15);color:#86efac;border-color:rgba(34,197,94,.25)}
+  .status-bar.pending{background:rgba(251,191,36,.12);color:#fcd34d;border-color:rgba(251,191,36,.2)}
 }
 
 /* ── Saved dot ────────────────────────────────────────────────── */
 .saved-dot{
   display:inline-block;width:8px;height:8px;border-radius:50%;
-  background:var(--green);margin-right:5px;
-  box-shadow:0 0 0 3px rgba(5,150,105,.2)
+  background:#059669;margin-right:5px
 }
+@media(prefers-color-scheme:dark){.saved-dot{background:#4ade80}}
 
 /* ── Planning table ───────────────────────────────────────────── */
-#planning-table{border-collapse:collapse;border-radius:var(--r-lg);overflow:hidden}
-#planning-table thead tr{
-  background:linear-gradient(135deg,var(--b1),var(--b2)) !important;
-}
+#planning-table{border-collapse:collapse;width:100%}
+#planning-table thead tr{background:linear-gradient(135deg,#1e3a8a,#1d4ed8) !important}
 #planning-table thead th{
-  padding:10px 12px !important;font-size:.8em !important;
+  padding:10px 12px !important;font-size:.82em !important;
   color:#fff !important;font-weight:700;text-align:left
 }
 #planning-table tbody tr{transition:background .1s}
-#planning-table tbody tr:hover{filter:brightness(1.03)}
+#planning-table tbody tr:hover{filter:brightness(1.02)}
 #planning-table td{
   border-bottom:1px solid var(--border) !important;
-  padding:10px 12px !important
+  padding:11px 12px !important;font-size:.86em;color:var(--text)
 }
+#planning-table td strong{color:var(--text)}
 
 /* ── Upload zone ──────────────────────────────────────────────── */
 .upload-zone{
-  border:2px dashed var(--b4);border-radius:var(--r-lg);
+  border:2px dashed #93c5fd;border-radius:var(--r-lg);
   padding:30px 16px;text-align:center;cursor:pointer;
-  color:var(--muted);font-size:.88em;transition:all .2s;
-  background:linear-gradient(135deg,var(--b-pale),transparent)
+  color:var(--text2);font-size:.9em;transition:all .2s;background:#eff6ff
+}
+@media(prefers-color-scheme:dark){
+  .upload-zone{background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.3);color:var(--text2)}
 }
 .upload-zone:active,.upload-zone.drag{
-  border-color:var(--b3);background:var(--b-pale);
-  box-shadow:0 0 0 4px var(--b-glow)
+  border-color:#2563eb;background:#dbeafe;box-shadow:0 0 0 4px rgba(37,99,235,.12)
 }
 .uz-icon{font-size:2.4em;display:block;margin-bottom:10px}
+.upload-zone strong{color:#1d4ed8;font-weight:700}
+@media(prefers-color-scheme:dark){.upload-zone strong{color:#60a5fa}}
 
 /* ── File list ────────────────────────────────────────────────── */
 .file-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
@@ -162,18 +146,19 @@
   border:1px solid var(--border);transition:all .12s;
   animation:fadeUp .3s ease both
 }
-.file-item:hover{border-color:var(--b3);box-shadow:0 0 0 2px var(--b-glow)}
+.file-item:hover{border-color:#93c5fd;box-shadow:0 0 0 2px rgba(37,99,235,.12)}
 .file-icon{font-size:1.8em;flex-shrink:0}
 .file-info{flex:1;min-width:0}
-.file-name{font-size:.9em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.file-meta{font-size:.75em;color:var(--muted);margin-top:3px}
-.file-btn{
-  padding:7px 13px;border-radius:var(--r-sm);border:none;
-  font-size:.8em;font-weight:700;cursor:pointer;transition:all .12s
-}
+.file-name{font-size:.9em;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-meta{font-size:.78em;color:var(--text2);margin-top:3px}
+.file-btn{padding:7px 13px;border-radius:var(--r-sm);border:none;font-size:.82em;font-weight:700;cursor:pointer;transition:all .12s}
 .file-btn:active{transform:scale(.94)}
-.file-dl{background:var(--b-pale);color:var(--b3)}
-.file-del{background:var(--red-bg,#fef2f2);color:var(--red,#dc2626);margin-left:4px}
+.file-dl{background:#dbeafe;color:#1e40af}
+.file-del{background:#fee2e2;color:#dc2626;margin-left:4px}
+@media(prefers-color-scheme:dark){
+  .file-dl{background:rgba(59,130,246,.18);color:#93c5fd}
+  .file-del{background:rgba(248,113,113,.15);color:#fca5a5}
+}
 </style>
 </head>
 <body>
@@ -181,7 +166,7 @@
 <div class="header">
   <div class="header-row">
     <h1>📄 Mes Documents</h1>
-    <span id="save-status" style="font-size:.78em;opacity:.8"></span>
+    <span id="save-status" style="font-size:.82em;color:rgba(255,255,255,.92);font-weight:500"></span>
   </div>
 </div>
 
