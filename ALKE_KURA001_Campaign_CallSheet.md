@@ -44,11 +44,21 @@
 - Tracking **+300–400**, Light weight only, bone `#ECE3D2`.
 - Animation: **fade only** (8–12 frames). No slides or scales.
 
-**Copy bank:** `PRECISION IN MOTION` · `ALKE` · `AUTOMATIC · 24 JEWELS` · `CRAFTED FOR TIMELESS ELEGANCE`
+**Copy bank (EN / FR):**
+| English | Français |
+|---------|----------|
+| `PRECISION IN MOTION` | `LA PRÉCISION EN MOUVEMENT` |
+| `ALKE` | `ALKE` *(logo — unchanged)* |
+| `AUTOMATIC · 24 JEWELS` | `AUTOMATIQUE · 24 RUBIS` |
+| `CRAFTED FOR TIMELESS ELEGANCE` | `CONÇUE POUR UNE ÉLÉGANCE INTEMPORELLE` |
+*(Horological note: in French the movement stones are "rubis", not "jewels".)*
 
 **Voice-over (deep, calm, luxurious):**
-> "ALKE. A watch designed for those who appreciate detail, precision, and timeless elegance."
-> *(15s vertical short form: "ALKE. Timeless elegance.")*
+> EN: "ALKE. A watch designed for those who appreciate detail, precision, and timeless elegance."
+> FR: « ALKE. Une montre pensée pour celles et ceux qui apprécient le détail, la précision et l'élégance intemporelle. »
+> *(15s vertical short form — EN: "ALKE. Timeless elegance." / FR: « ALKE. L'élégance intemporelle. »)*
+
+**French typography note:** keep ALL CAPS + wide tracking (+350). Verify the chosen font renders accents (É, È) cleanly at hairline weight — Futura PT / Avenir Light work; Cormorant or Montserrat Light are safe fallbacks for accents.
 
 **Music brief:** solo felt piano, 60–70 BPM, sustained sub-bass drone, one tension swell, warm major resolution. A. Lange / Patek tonal world. Search: *"elegant minimal felt piano luxury cinematic ambient."*
 
@@ -93,7 +103,9 @@
 | 0:00–0:06 | Crystal + case | — | Piano in, drone, ticking |
 | 0:06–0:12 | Dial | PRECISION IN MOTION | Piano develops |
 | 0:12–0:16 | Strap → clasp | — | Build, creak, click |
-| 0:16–0:18 | Movement → hero | ALKE · 24 JEWELS · tagline | VO + final chord |
+| 0:16–0:18 | Movement → hero | ALKE · 24 JEWELS / 24 RUBIS · tagline | VO + final chord |
+
+*On-screen text languages — EN: `PRECISION IN MOTION` / `AUTOMATIC · 24 JEWELS` / `CRAFTED FOR TIMELESS ELEGANCE`. FR: `LA PRÉCISION EN MOUVEMENT` / `AUTOMATIQUE · 24 RUBIS` / `CONÇUE POUR UNE ÉLÉGANCE INTEMPORELLE`. Same timings.*
 
 ---
 
